@@ -1,0 +1,15 @@
+# app/
+app/node_modules/
+app/.next/
+app/.env
+app/.env*.local
+!app/.env.example
+
+# db (postgres data volume is docker-managed, not a local folder, so nothing here needed)
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+*.log

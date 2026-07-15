@@ -1,0 +1,27 @@
+[골프장정보 api 준비]
+data.go.kr 회원가입 : wi97 / Hunter@!99
+행정안전부_생활_골프장 조회서비스 계정 개발 신청일 2026-07-14 만료예정일 2028-07-14
+https://apis.data.go.kr/1741000/golf_courses/info?serviceKey=c033b21b4195560ad56251f924a28988ad118dda9a8d3b45824317315503f499&pageNo=1&numOfRows=20'
+
+[github 준비]
+https://github.com/haekongpapa/scorecaddie
+heakongpapa / Hunter@!99 
+
+[DB 구동을 위한 docker 설치]
+https://www.docker.com/products/docker-desktop
+
+[Node.js 설치]
+https://nodejs.org
+
+[db 실행]
+docker 실행
+docker compose up -d
+docker compose down
+
+
+local에 개발환경 구성
+  vscode, postgre
+github 연결 (haekongpapa / Hunter@!99
+
+
+

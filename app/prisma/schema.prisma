@@ -1,0 +1,141 @@
+// ScoreCaddie DB 스키마
+// 설계 근거: docs 분석/설계 요약 PPT (User / GolfCourse / Round / HoleScore 4개 핵심 테이블)
+// NextAuth(Auth.js) Prisma Adapter 사용을 위해 Account/Session/VerificationToken 포함
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Prisma 7부터 datasource.url 은 schema.prisma에 쓸 수 없음 (validation error).
+  // CLI(migrate 등)용 연결 문자열은 prisma.config.ts 에서, 런타임 PrismaClient용은
+  // @prisma/adapter-pg 로 src/lib/prisma.ts 에서 각각 명시적으로 전달한다.
+}
+
+// ---------------------------------------------------------------------------
+// 인증 (NextAuth.js / Auth.js v5)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  // 이메일/비밀번호 로그인용 (소셜 로그인만 쓰는 사용자는 null)
+  passwordHash  String?
+
+  accounts Account[]
+  sessions Session[]
+  rounds   Round[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// 골프장 (공공데이터포털 "행정안전부_골프장" 인허가 데이터 연동)
+// ---------------------------------------------------------------------------
+
+model GolfCourse {
+  id      String @id @default(cuid())
+  name    String
+  address String?
+
+  // WGS84 변환 좌표 (결측 가능 - needsGeocoding 참고)
+  latitude  Float?
+  longitude Float?
+
+  // 원본 좌표 보존 (TM 중부원점 / EPSG:5174, 공공데이터 원본값)
+  rawCoordX String?
+  rawCoordY String?
+  needsGeocoding Boolean @default(false)
+
+  // 공공데이터 원본 식별자 (지자체 내에서만 유일 -> 조합 unique)
+  externalOrgCd  String?
+  externalMngNo  String?
+
+  businessStatus String? // 영업상태
+  subCategory    String? // 세부업종
+  publicPrivate  String? // 공공/민간 구분
+
+  rounds Round[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([externalOrgCd, externalMngNo])
+}
+
+// ---------------------------------------------------------------------------
+// 라운드(방문) 기록 + 홀별 스코어
+// ---------------------------------------------------------------------------
+
+model Round {
+  id           String   @id @default(cuid())
+  userId       String
+  golfCourseId String
+  playedAt     DateTime
+
+  // 라운드 등록 시점 골프장 좌표 기반 날씨 스냅샷 (JSON 텍스트로 저장)
+  weatherSnapshot String? @db.Text
+  memo            String? @db.Text
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  golfCourse GolfCourse @relation(fields: [golfCourseId], references: [id])
+  holeScores HoleScore[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, playedAt])
+}
+
+model HoleScore {
+  id         String @id @default(cuid())
+  roundId    String
+  holeNumber Int    // 1~18
+  strokes    Int
+  memo       String? @db.Text
+
+  round Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, holeNumber])
+}

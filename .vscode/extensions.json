@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "Prisma.prisma",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "ms-azuretools.vscode-docker",
+    "editorconfig.editorconfig",
+    "christian-kohler.path-intellisense"
+  ]
+}

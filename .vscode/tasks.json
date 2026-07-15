@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "DB: docker compose up",
+      "type": "shell",
+      "command": "docker compose up -d",
+      "options": { "cwd": "${workspaceFolder}/db" },
+      "problemMatcher": []
+    },
+    {
+      "label": "DB: docker compose down",
+      "type": "shell",
+      "command": "docker compose down",
+      "options": { "cwd": "${workspaceFolder}/db" },
+      "problemMatcher": []
+    },
+    {
+      "label": "App: npm install",
+      "type": "shell",
+      "command": "npm install",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "problemMatcher": []
+    },
+    {
+      "label": "App: prisma migrate dev",
+      "type": "shell",
+      "command": "npx prisma migrate dev",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "problemMatcher": []
+    },
+    {
+      "label": "App: dev server",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}
