@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>ScoreCaddie - 라운드 상세</title><link rel="stylesheet" href="_shared.css">
+<style>
+  .readonly-badge {
+    display:inline-block; background:rgba(255,255,255,0.18); color:#fff; font-size:10.5px;
+    font-weight:700; padding:3px 8px; border-radius:6px; margin-top:6px;
+  }
+  .readonly-note {
+    text-align:center; font-size:11.5px; color:var(--text-muted); background:var(--card-bg);
+    border-radius:10px; padding:10px; margin-bottom:4px;
+  }
+
+  .sc-eagle { color:var(--accent); font-weight:800; text-decoration:underline; }
+  .sc-birdie { color:var(--accent); font-weight:800; }
+  .sc-par { color:var(--text-dark); font-weight:700; }
+  .sc-bogey { color:#B85042; font-weight:700; }
+  .sc-dbogey { color:#B85042; font-weight:800; text-decoration:underline; }
+
+  /* ---- 홀별 스코어 매트릭스 ---- */
+  .hstrip-label { font-size:11px; color:var(--text-muted); font-weight:600; margin:0 0 6px; }
+  .legend-bar { display:flex; flex-wrap:wrap; gap:5px; background:var(--card-bg2); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:10px; color:var(--text-dark); }
+  .legend-bar .lg-item { display:flex; align-items:center; gap:3px; }
+  .legend-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+  .legend-dot.good { background:var(--primary); }
+  .legend-dot.bad { background:#DDD; }
+
+  .matrix-half-card {
+    border:1px solid var(--border); border-radius:12px; padding:10px 10px 2px; margin-bottom:14px;
+    background:#fff; box-shadow:0 1px 4px rgba(31,77,44,0.05);
+  }
+  .matrix-half-card.mhc-front { border-left:3px solid var(--primary); }
+  .matrix-half-card.mhc-back { border-left:3px solid var(--accent); }
+
+  table.detail-matrix { width:100%; border-collapse:collapse; font-size:11px; margin-bottom:10px; table-layout:fixed; }
+  table.detail-matrix td { text-align:center; padding:4px 0; }
+  table.detail-matrix tr.row-label td:first-child { text-align:left; color:var(--text-muted); font-size:10px; }
+  /* 홀/파/스코어 행 구분 — 배경/굵기로 한눈에 행 종류를 구별 */
+  table.detail-matrix tr.mtx-hole-row td { color:var(--text-muted); font-size:9.5px; padding:3px 0 4px; border-bottom:1px solid var(--border); }
+  table.detail-matrix tr.mtx-par-row td:not(:first-child) { background:var(--card-bg); color:var(--text-muted); font-weight:600; padding:5px 0; }
+  table.detail-matrix tr.mtx-par-row td:last-child { color:var(--primary); font-weight:700; }
+  table.detail-matrix tr.mtx-score-row td:not(:first-child) { background:var(--card-bg2); font-weight:800; font-size:12.5px; padding:6px 0; }
+  table.detail-matrix tr.mtx-score-row td:last-child { color:var(--primary); }
+  table.detail-matrix tr.mtx-score-row td:first-child { padding-top:3px; }
+
+  .tee-chip { display:inline-block; font-size:9px; font-weight:800; padding:1px 4px; border-radius:4px; }
+  .tee-chip.t-good { background:#E4F2E4; color:var(--primary); }
+  .tee-chip.t-neutral { background:var(--card-bg2); color:var(--text-muted); }
+  .tee-chip.t-bad { background:#FBE7E3; color:#B85042; }
+  .gir-row { margin-top:3px; display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; }
+  .dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+  .dot.dot-good { background:var(--primary); }
+  .dot.dot-bad { background:var(--border); }
+  .mini-s, .mini-sand {
+    display:inline-block; font-size:8.5px; font-weight:800; padding:1px 3px; border-radius:4px; line-height:1.3;
+  }
+  .mini-s { background:#FDF1DC; color:var(--accent); }
+  .mini-sand.good { background:#E4F2E4; color:var(--primary); }
+  .mini-sand.bad { background:#FBE7E3; color:#B85042; }
+  .misc-icon { font-size:11px; }
+  .memo-icon-btn {
+    border:none; background:transparent; font-size:12px; cursor:pointer; padding:2px 3px;
+    border-radius:5px; font-family:inherit; line-height:1;
+  }
+  .memo-icon-btn.active { background:var(--card-bg2); }
+  .hole-memo-panel {
+    background:var(--card-bg); border-radius:10px; padding:10px 12px; margin:2px 0 12px;
+    font-size:12px; color:var(--text-dark); line-height:1.45;
+  }
+  .hole-memo-panel.placeholder { color:var(--text-muted); }
+  .hole-memo-panel strong { color:var(--primary); }
+
+  /* 언더파/오버파 표시 — 버디 이하는 동그라미, 보기 이상은 네모(더블은 이중 테두리)로 숫자를 감쌈 */
+  .sc-mark {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:19px; height:19px; padding:0 1px; box-sizing:border-box; line-height:1;
+  }
+  .sc-mark.circle { border-radius:50%; border:1.4px solid currentColor; }
+  .sc-mark.dcircle {
+    border-radius:50%; border:1.4px solid currentColor;
+    box-shadow: 0 0 0 2px var(--card-bg2), 0 0 0 3.4px currentColor;
+  }
+  .sc-mark.square { border-radius:3px; border:1.4px solid currentColor; }
+  .sc-mark.dsquare {
+    border-radius:3px; border:1.4px solid currentColor;
+    box-shadow: 0 0 0 2px var(--card-bg2), 0 0 0 3.4px currentColor;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>ScoreCaddie</span></div>
+  <div class="topbar"><a href="08-rounds.html" class="back">‹ 뒤로</a><h1>라운드 상세</h1><span></span></div>
+  <div class="content">
+    <div class="card dark" style="margin-bottom:16px;">
+      <div style="font-size:15px; font-weight:600; margin-bottom:4px;" id="rd-course">레이크사이드 CC</div>
+      <div class="muted" style="margin-bottom:10px;" id="rd-meta">2026.07.12 · ☀️ 맑음 24℃</div>
+      <div style="font-size:24px; font-weight:700;" id="rd-score">88타</div>
+      <div id="rd-owner-badge"></div>
+    </div>
+
+    <h2 class="section-title">홀별 스코어</h2>
+
+    <div id="hole-score-section">
+      <div class="legend-bar">
+        <span class="lg-item"><span class="tee-chip t-good">FW</span>페어웨이</span>
+        <span class="lg-item"><span class="tee-chip t-neutral">MS</span>미스</span>
+        <span class="lg-item"><span class="tee-chip t-bad">PN</span>페널티</span>
+        <span class="lg-item"><span class="tee-chip t-bad">OB</span>OB</span>
+        <span class="lg-item"><span class="dot dot-good"></span>GIR 성공</span>
+        <span class="lg-item"><span class="dot dot-bad"></span>GIR 실패</span>
+        <span class="lg-item"><span class="mini-s">S</span>스크램블링 성공</span>
+        <span class="lg-item"><span class="mini-sand good">✓</span>/<span class="mini-sand bad">✗</span>샌드세이브</span>
+      </div>
+      <div id="matrix-front"></div>
+      <div id="matrix-back"></div>
+      <div class="hole-memo-panel placeholder" id="hole-memo-panel">📝 아이콘을 탭하면 해당 홀 메모가 여기에 표시돼요.</div>
+    </div>
+
+    <div id="rd-actions" style="display:flex; gap:8px;">
+      <a href="#" id="rd-edit-link" class="btn secondary">수정</a>
+      <a href="#" class="btn secondary" style="color:#D85A30; border-color:#D85A30;">삭제</a>
+    </div>
+    <div class="readonly-note" id="rd-readonly-note" style="display:none;">다른 회원의 라운드는 읽기 전용으로 열람할 수 있어요</div>
+  </div>
+  <div class="screen-label">9. 라운드 상세 — 홀별 스코어 매트릭스형 확정 + 08→09 골프장 연계 (2026-07-16)</div>
+</div>
+<script>
+(function () {
+  var CURRENT_USER_ID = 'me';
+  var params = new URLSearchParams(location.search);
+  var course = params.get('course') || '레이크사이드 CC';
+  var date = params.get('date') || '2026-07-12';
+  var score = params.get('score') || '88';
+  var weather = params.get('weather') || '☀️ 맑음 24℃';
+  var ownerId = params.get('ownerId') || 'me';
+  var ownerName = params.get('owner') || '재홍';
+  var isOwner = ownerId === CURRENT_USER_ID;
+
+  document.getElementById('rd-course').textContent = course;
+  document.getElementById('rd-meta').textContent = date.replace(/-/g, '.') + ' · ' + weather;
+  document.getElementById('rd-score').textContent = score + '타';
+
+  if (!isOwner) {
+    document.getElementById('rd-owner-badge').innerHTML = '<span class="readonly-badge">' + ownerName + '님의 라운드 · 읽기 전용</span>';
+    document.getElementById('rd-actions').style.display = 'none';
+    document.getElementById('rd-readonly-note').style.display = '';
+  }
+
+  // 홀별 상세(티샷결과/GIR/스크램블링/그린주변벙커) mock 데이터.
+  // 08번(스코어 조회)에서는 라운드 요약(합계타수)만 넘어오고 홀별 상세는 목업 범위상 항상
+  // 동일한 예시 데이터를 사용한다 — 합계(위 rd-score)와 아래 18홀 합계(74타)가 다를 수 있는 것은
+  // 이 예시 데이터의 한계이며 실제 구현 시 HoleScore 18건을 그대로 조회해 대체한다.
+  // (2번 홀 = 샌드세이브 실패, 12번 홀 = 샌드세이브 성공 예시로 대조되도록 구성)
+  var holesData = [
+    { n:1,  half:'전반', local:1, par:4, strokes:4, tee:'fairway', onGreen:2, putt:2, bunker:false, pinType:'near', pinValue:4,  memo:'' },
+    { n:2,  half:'전반', local:2, par:4, strokes:5, tee:'miss',    onGreen:3, putt:2, bunker:true,  pinType:'near', pinValue:9,  memo:'벙커샷 실수' },
+    { n:3,  half:'전반', local:3, par:3, strokes:3, tee:null,      onGreen:1, putt:2, bunker:false, pinType:'near', pinValue:2,  memo:'' },
+    { n:4,  half:'전반', local:4, par:5, strokes:4, tee:'fairway', onGreen:2, putt:2, bunker:false, pinType:'near', pinValue:6,  memo:'' },
+    { n:5,  half:'전반', local:5, par:4, strokes:4, tee:'fairway', onGreen:2, putt:2, bunker:false, pinType:'far',  pinValue:null, memo:'' },
+    { n:6,  half:'전반', local:6, par:4, strokes:4, tee:'penalty', onGreen:3, putt:1, bunker:false, pinType:'near', pinValue:3,  memo:'침착한 파세이브' },
+    { n:7,  half:'전반', local:7, par:4, strokes:4, tee:'fairway', onGreen:2, putt:2, bunker:false, pinType:'near', pinValue:5,  memo:'' },
+    { n:8,  half:'전반', local:8, par:4, strokes:3, tee:'fairway', onGreen:1, putt:2, bunker:false, pinType:'near', pinValue:1,  memo:'' },
+    { n:9,  half:'전반', local:9, par:4, strokes:5, tee:'miss',    onGreen:3, putt:2, bunker:false, pinType:'far',  pinValue:null, memo:'' },
+    { n:10, half:'후반', local:1, par:4, strokes:5, tee:'miss',    onGreen:3, putt:2, bunker:false, pinType:'near', pinValue:7,  memo:'' },
+    { n:11, half:'후반', local:2, par:4, strokes:4, tee:'fairway', onGreen:2, putt:2, bunker:false, pinType:'near', pinValue:4,  memo:'' },
+    { n:12, half:'후반', local:3, par:3, strokes:3, tee:null,      onGreen:2, putt:1, bunker:true,  pinType:'near', pinValue:10, memo:'벙커 탈출 후 파 세이브' },
+    { n:13, half:'후반', local:4, par:5, strokes:5, tee:'fairway', onGreen:3, putt:2, bunker:false, pinType:'near', pinValue:8,  memo:'' },
+    { n:14, half:'후반', local:5, par:4, strokes:4, tee:'fairway', onGreen:2, putt:2, bunker:false, pinType:'near', pinValue:3,  memo:'' },
+    { n:15, half:'후반', local:6, par:4, strokes:6, tee:'ob',      onGreen:4, putt:2, bunker:false, pinType:'far',  pinValue:null, memo:'OB 2개' },
+    { n:16, half:'후반', local:7, par:3, strokes:3, tee:null,      onGreen:1, putt:2, bunker:false, pinType:'near', pinValue:2,  memo:'' },
+    { n:17, half:'후반', local:8, par:5, strokes:4, tee:'fairway', onGreen:2, putt:2, bunker:false, pinType:'near', pinValue:5,  memo:'버디!' },
+    { n:18, half:'후반', local:9, par:4, strokes:4, tee:'fairway', onGreen:2, putt:2, bunker:false, pinType:'near', pinValue:6,  memo:'' }
+  ];
+
+  function computeStats(h) {
+    var rel = h.strokes - h.par;
+    var gir = h.onGreen <= (h.par - 2);
+    var scramble = gir ? null : (h.strokes <= h.par);
+    var sand = h.bunker ? (h.strokes <= h.par ? 'save' : 'fail') : null;
+    return { rel: rel, gir: gir, scramble: scramble, sand: sand };
+  }
+
+  function relClass(rel) {
+    if (rel <= -2) return 'sc-eagle';
+    if (rel === -1) return 'sc-birdie';
+    if (rel === 0) return 'sc-par';
+    if (rel === 1) return 'sc-bogey';
+    return 'sc-dbogey';
+  }
+
+  // 스코어 숫자 둘레에 언더파(동그라미)/오버파(네모) 표시를 위한 모양 클래스.
+  // 이글 이하/더블보기 이상은 이중 테두리로 한 단계 더 강조.
+  function scShapeClass(rel) {
+    if (rel <= -2) return 'dcircle';
+    if (rel === -1) return 'circle';
+    if (rel === 1) return 'square';
+    if (rel >= 2) return 'dsquare';
+    return '';
+  }
+
+  var TEE_CODE = { fairway: ['FW', 't-good'], miss: ['MS', 't-neutral'], penalty: ['PN', 't-bad'], ob: ['OB', 't-bad'] };
+
+  function matrixTeeCell(h) {
+    var code = h.tee ? TEE_CODE[h.tee] : ['-', 't-neutral'];
+    return '<span class="tee-chip ' + code[1] + '">' + code[0] + '</span>';
+  }
+  function matrixMiscCell(h) {
+    var st = computeStats(h);
+    var dotClass = st.gir ? 'dot-good' : 'dot-bad';
+    var extra = '';
+    if (st.scramble === true) extra += '<span class="mini-s">S</span>';
+    if (st.sand === 'save') extra += '<span class="mini-sand good">✓</span>';
+    if (st.sand === 'fail') extra += '<span class="mini-sand bad">✗</span>';
+    return '<div class="gir-row"><span class="dot ' + dotClass + '"></span>' + extra + '</div>';
+  }
+
+  function renderMatrix(half, startIdx) {
+    var rows = { hole: '', par: '', sc: '', tee: '', misc: '', putt: '', etc: '' };
+    var parSum = 0, scSum = 0;
+    rows.hole = '<tr class="row-label mtx-hole-row"><td>홀</td>';
+    rows.par  = '<tr class="row-label mtx-par-row"><td>파</td>';
+    rows.sc   = '<tr class="row-label mtx-score-row"><td>스코어</td>';
+    rows.tee  = '<tr class="row-label"><td>티샷</td>';
+    rows.misc = '<tr class="row-label"><td>특이사항</td>';
+    rows.putt = '<tr class="row-label"><td>퍼트</td>';
+    rows.etc  = '<tr class="row-label"><td>메모</td>';
+    for (var i = 0; i < 9; i++) {
+      var h = holesData[startIdx + i];
+      var st = computeStats(h);
+      parSum += h.par; scSum += h.strokes;
+      rows.hole += '<td>' + h.local + '</td>';
+      rows.par  += '<td>' + h.par + '</td>';
+      rows.sc   += '<td class="' + relClass(st.rel) + '"><span class="sc-mark ' + scShapeClass(st.rel) + '">' + h.strokes + '</span></td>';
+      rows.tee  += '<td>' + matrixTeeCell(h) + '</td>';
+      rows.misc += '<td>' + matrixMiscCell(h) + '</td>';
+      rows.putt += '<td>' + h.putt + '</td>';
+      rows.etc  += '<td class="misc-icon">' + (h.memo ? '<button type="button" class="memo-icon-btn" data-idx="' + (startIdx + i) + '">📝</button>' : '') + '</td>';
+    }
+    rows.hole += '<td>합계</td></tr>';
+    rows.par  += '<td>' + parSum + '</td></tr>';
+    rows.sc   += '<td>' + scSum + '</td></tr>';
+    rows.tee  += '<td></td></tr>';
+    rows.misc += '<td></td></tr>';
+    rows.putt += '<td></td></tr>';
+    rows.etc  += '<td></td></tr>';
+
+    var sideClass = startIdx === 0 ? 'mhc-front' : 'mhc-back';
+    return '<div class="matrix-half-card ' + sideClass + '"><div class="hstrip-label">' + half + ' · ' + course + '</div><table class="detail-matrix">' +
+      rows.hole + rows.par + rows.sc + rows.tee + rows.misc + rows.putt + rows.etc + '</table></div>';
+  }
+
+  function renderMatrixAll() {
+    document.getElementById('matrix-front').innerHTML = renderMatrix('전반', 0);
+    document.getElementById('matrix-back').innerHTML = renderMatrix('후반', 9);
+  }
+
+  // 메모 아이콘 클릭 시 하단 패널에 해당 홀 메모를 표시
+  var activeMemoBtn = null;
+  function showMemo(idx, btnEl) {
+    if (activeMemoBtn) { activeMemoBtn.classList.remove('active'); }
+    activeMemoBtn = btnEl || null;
+    if (btnEl) { btnEl.classList.add('active'); }
+    var h = holesData[idx];
+    var panel = document.getElementById('hole-memo-panel');
+    if (!h || !h.memo) { return; }
+    panel.classList.remove('placeholder');
+    panel.innerHTML = '<strong>' + h.half + ' ' + h.local + '번 홀 메모</strong><br>' + h.memo;
+  }
+
+  document.getElementById('hole-score-section').addEventListener('click', function (e) {
+    var btn = e.target.closest('.memo-icon-btn');
+    if (!btn) { return; }
+    showMemo(parseInt(btn.dataset.idx, 10), btn);
+  });
+
+  // 수정 버튼: 08에서 넘어온 course/date + 이 목업의 18홀 strokes를 그대로 전달
+  var scoresStr = holesData.map(function (h) { return h.strokes; }).join(',');
+  document.getElementById('rd-edit-link').href =
+    '07-round-new-step2.html?edit=1&course=' + encodeURIComponent(course) + '&date=' + encodeURIComponent(date) + '&holes=18&scores=' + scoresStr;
+
+  renderMatrixAll();
+})();
+</script>
+</body></html>

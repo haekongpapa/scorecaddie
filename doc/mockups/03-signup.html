@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>ScoreCaddie - 회원가입</title><link rel="stylesheet" href="_shared.css">
+<style>
+  .consent-row { display:flex; align-items:flex-start; gap:8px; margin:4px 0 2px; cursor:pointer; }
+  .consent-row input { width:auto; margin:2px 0 0; flex:0 0 auto; }
+  .consent-row .consent-label { font-size:12.5px; color:var(--text-dark); }
+  .consent-row .optional-tag {
+    font-size:10px; color:var(--text-muted); font-weight:600; margin-left:2px;
+  }
+  .consent-desc { font-size:11px; color:var(--text-muted); margin:2px 0 16px 22px; line-height:1.4; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>ScoreCaddie</span></div>
+  <div class="topbar"><a href="02-login.html" class="back">‹ 뒤로</a><h1>회원가입</h1><span></span></div>
+  <div class="content">
+    <label>이름</label>
+    <input type="text" placeholder="홍길동">
+    <label>이메일</label>
+    <input type="email" placeholder="name@example.com">
+    <label>비밀번호</label>
+    <input type="password" placeholder="8자 이상">
+    <label>비밀번호 확인</label>
+    <input type="password" placeholder="다시 입력">
+
+    <label class="consent-row">
+      <input type="checkbox" id="third-party-consent">
+      <span class="consent-label">타인에게 정보 제공 동의<span class="optional-tag">(선택)</span></span>
+    </label>
+    <p class="consent-desc">동의하지 않아도 가입/서비스 이용에는 제한이 없어요. 마이페이지에서 언제든 변경할 수 있어요.</p>
+
+    <a href="04-dashboard.html" class="btn" style="margin:6px 0 16px;">가입하기</a>
+    <p class="muted" style="text-align:center;">이미 계정이 있으신가요? <a href="02-login.html" style="color:var(--primary); font-weight:600;">로그인</a></p>
+  </div>
+  <div class="screen-label">3. 회원가입 — 제3자 정보제공 동의 항목 추가 (2026-07-16)</div>
+</div>
+</body></html>

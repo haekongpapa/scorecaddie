@@ -1,3 +1,30 @@
+1.요구사항 정리해서 전달
+  - 참고 자료 
+    https://evenpar.ddns.net/round_score.asp?analysis_no=5336
+    https://sollago.co.kr/pagesite/course/intro.asp
+    
+2.분석/설계문서 작성
+3.로컬폴더에 개발 환경 구축
+  -/app
+  -/db
+4.필요한 프로그램 설치
+  docker, nodejs, vscode  
+5.목업 작성해서 기본적인 플로우 및 기능 설계추가  
+
+6.스코어 입력 화면 수정
+  
+  - 골프장선택, 9H/18H 선택, 코스명입력 코스명은 18H인 경우 전반(1~9홀)/후반(10~18홀) 각각 입력 9H인 경우 전반(1~9홀)만 입력, 라운드 날짜, 날씨,
+    
+    홀 리스트 표형태로 표시 
+    전반(1~9H) 과 후반 (10~18H)을 나눠서 표시
+    각 홀마다 PAR 타수,  스코어, 온그린타수, 핀거리, 퍼트, 메모 여부표시
+    
+    스코어 입력 항목
+    파 규정 타수선택, 티샷결과(페어웨이,페어실패,페널티,OB), 
+    페널티타수/OB타수 정보 (with 그린주변벙커), 온그린 핀거리, 스코어 ( 온그린타수, 퍼트타수),
+    메모
+
+  
 [골프장정보 api 준비]
 data.go.kr 회원가입 : wi97 / Hunter@!99
 행정안전부_생활_골프장 조회서비스 계정 개발 신청일 2026-07-14 만료예정일 2028-07-14
@@ -13,15 +40,10 @@ https://www.docker.com/products/docker-desktop
 [Node.js 설치]
 https://nodejs.org
 
-[db 실행]
+[db 실행/종료]
 docker 실행
 docker compose up -d
 docker compose down
 
-
-local에 개발환경 구성
-  vscode, postgre
-github 연결 (haekongpapa / Hunter@!99
-
-
-
+[vscode 설치]
+https://code.visualstudio.com

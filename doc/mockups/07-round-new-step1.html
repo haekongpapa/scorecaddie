@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>ScoreCaddie - 스코어 등록 (1/2)</title><link rel="stylesheet" href="_shared.css">
+<style>
+  .step-indicator { display:flex; align-items:center; justify-content:center; gap:6px; margin:2px 0 18px; }
+  .step-dot { display:flex; align-items:center; gap:6px; }
+  .step-dot .circle {
+    width:22px; height:22px; border-radius:50%; background:var(--card-bg2); color:var(--text-muted);
+    font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  }
+  .step-dot.active .circle { background:var(--primary); color:#fff; }
+  .step-dot .label { font-size:11px; color:var(--text-muted); font-weight:600; }
+  .step-dot.active .label { color:var(--primary); }
+  .step-line { width:28px; height:1px; background:var(--border); }
+
+  .seg { display:flex; background:var(--card-bg); border-radius:10px; padding:3px; margin-bottom:14px; }
+  .seg button {
+    flex:1; border:none; background:transparent; padding:9px 0; font-size:13px; font-weight:600;
+    color:var(--text-muted); border-radius:8px; cursor:pointer; font-family:inherit;
+  }
+  .seg button.active { background:var(--primary); color:#fff; }
+
+  .half-label { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); margin:0 0 4px; font-weight:600; }
+  .half-label .tag {
+    background:var(--card-bg2); color:var(--primary); font-size:10px; padding:2px 6px; border-radius:5px; font-weight:700;
+  }
+
+  #back9-block.hidden { display:none; }
+
+  .loop-empty-hint { font-size:10.5px; color:var(--label-red,#B85042); margin:-6px 0 12px; }
+
+  .weather-card {
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--card-bg); border-radius:12px; padding:14px; margin:2px 0 18px;
+  }
+  .weather-card .left { display:flex; align-items:center; gap:10px; }
+  .weather-card .icon { font-size:22px; }
+  .weather-card .desc { font-size:12px; color:var(--text-muted); }
+  .weather-card .temp { font-size:16px; font-weight:700; }
+  .weather-card .auto { font-size:10px; color:var(--text-muted); margin-top:1px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>ScoreCaddie</span></div>
+  <div class="topbar"><a href="04-dashboard.html" class="back">‹ 뒤로</a><h1>스코어 등록</h1><span></span></div>
+  <div class="content">
+
+    <div class="step-indicator">
+      <div class="step-dot active"><span class="circle">1</span><span class="label">코스 선택</span></div>
+      <div class="step-line"></div>
+      <div class="step-dot"><span class="circle">2</span><span class="label">스코어 입력</span></div>
+    </div>
+
+    <label>골프장</label>
+    <select id="course-select">
+      <option>레이크사이드 CC</option>
+      <option>파인밸리 GC</option>
+      <option>선셋힐스 CC</option>
+      <option>그린밸리 CC</option>
+    </select>
+
+    <label>홀 수</label>
+    <div class="seg" id="holes-seg">
+      <button type="button" class="active" data-holes="18">18홀</button>
+      <button type="button" data-holes="9">9홀</button>
+    </div>
+
+    <div id="front9-block">
+      <div class="half-label"><span class="tag">전반</span> 1~9홀 루프</div>
+      <select id="front9-course"></select>
+    </div>
+
+    <div id="back9-block">
+      <div class="half-label"><span class="tag">후반</span> 10~18홀 루프</div>
+      <select id="back9-course"></select>
+    </div>
+    <div class="loop-empty-hint" id="loop-empty-hint" style="display:none;">이 골프장은 아직 루프(전반/후반 등)가 등록되지 않았어요. 관리자 화면에서 먼저 등록해주세요.</div>
+
+    <label>라운드 일자</label>
+    <input type="date" value="2026-07-18" id="round-date">
+
+    <div class="weather-card">
+      <div class="left">
+        <span class="icon">☀️</span>
+        <div>
+          <div class="desc">라운드 당시 날씨</div>
+          <div class="auto">일자 선택 시 자동 표시</div>
+        </div>
+      </div>
+      <span class="temp">맑음 27℃</span>
+    </div>
+
+    <a href="07-round-new-step2.html" class="btn" id="next-link">스코어 카드 &rsaquo;</a>
+  </div>
+  <div class="screen-label">7-1. 스코어 등록 · Step 1 (코스 선택) — GolfCourseLoop 연동안</div>
+</div>
+<script>
+(function () {
+  // 골프장별 등록된 GolfCourseLoop 목록 (mock). 실제 구현 시
+  // GET /api/golf-courses/:id/loops (GolfCourseLoop.sortOrder 순) 응답으로 대체.
+  // 각 loop는 { id, name } — id는 화면 전환 시 frontLoop/backLoop 쿼리 파라미터로 전달되어
+  // Round.frontLoopId / Round.backLoopId 저장에 그대로 이어진다.
+  var COURSE_LOOPS = {
+    '레이크사이드 CC': [
+      { id: 'loop_lakeside_front', name: '전반' },
+      { id: 'loop_lakeside_back', name: '후반' }
+    ],
+    '파인밸리 GC': [
+      { id: 'loop_pinevalley_front', name: '전반' },
+      { id: 'loop_pinevalley_back', name: '후반' }
+    ],
+    // 27홀 이상 골프장 예시: 루프가 2개보다 많을 수 있음
+    '선셋힐스 CC': [
+      { id: 'loop_sunset_east', name: '동코스' },
+      { id: 'loop_sunset_west', name: '서코스' },
+      { id: 'loop_sunset_south', name: '남코스' }
+    ],
+    '그린밸리 CC': [
+      { id: 'loop_greenvalley_front', name: '전반' },
+      { id: 'loop_greenvalley_back', name: '후반' }
+    ]
+  };
+
+  var holesSeg = document.getElementById('holes-seg');
+  var back9Block = document.getElementById('back9-block');
+  var courseSelect = document.getElementById('course-select');
+  var front9Course = document.getElementById('front9-course');
+  var back9Course = document.getElementById('back9-course');
+  var emptyHint = document.getElementById('loop-empty-hint');
+  var roundDate = document.getElementById('round-date');
+  var nextLink = document.getElementById('next-link');
+
+  function currentHoles() {
+    var activeBtn = holesSeg.querySelector('button.active');
+    return activeBtn ? activeBtn.dataset.holes : '18';
+  }
+
+  function loopsForCurrentCourse() {
+    return COURSE_LOOPS[courseSelect.value] || [];
+  }
+
+  function fillSelect(selectEl, loops, excludeId, preferId) {
+    var options = loops.filter(function (l) { return l.id !== excludeId; });
+    var prevValue = selectEl.value;
+    selectEl.innerHTML = options.map(function (l) {
+      return '<option value="' + l.id + '">' + l.name + '</option>';
+    }).join('');
+    if (preferId && options.some(function (l) { return l.id === preferId; })) {
+      selectEl.value = preferId;
+    } else if (options.some(function (l) { return l.id === prevValue; })) {
+      selectEl.value = prevValue;
+    } else if (options.length) {
+      selectEl.value = options[0].id;
+    }
+  }
+
+  // 전반/후반 select를 현재 골프장의 루프 목록으로 다시 채운다.
+  // 같은 루프를 전반/후반에 중복 선택할 수 없도록 서로의 선택값을 제외한다.
+  function rebuildLoopSelects(opts) {
+    opts = opts || {};
+    var loops = loopsForCurrentCourse();
+
+    if (!loops.length) {
+      front9Course.innerHTML = '';
+      back9Course.innerHTML = '';
+      emptyHint.style.display = '';
+      return;
+    }
+    emptyHint.style.display = 'none';
+
+    var frontPrefer = opts.frontFirst ? loops[0].id : undefined;
+    fillSelect(front9Course, loops, back9Course.value, frontPrefer);
+
+    var backPrefer = opts.frontFirst && loops[1] ? loops[1].id : undefined;
+    fillSelect(back9Course, loops, front9Course.value, backPrefer);
+  }
+
+  function updateLink() {
+    var params = new URLSearchParams();
+    params.set('holes', currentHoles());
+    params.set('course', courseSelect.value);
+    params.set('date', roundDate.value);
+    if (front9Course.value) { params.set('frontLoop', front9Course.value); }
+    if (currentHoles() === '18' && back9Course.value) { params.set('backLoop', back9Course.value); }
+    nextLink.setAttribute('href', '07-round-new-step2.html?' + params.toString());
+  }
+
+  holesSeg.querySelectorAll('button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      holesSeg.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      if (btn.dataset.holes === '9') {
+        back9Block.classList.add('hidden');
+      } else {
+        back9Block.classList.remove('hidden');
+      }
+      updateLink();
+    });
+  });
+
+  courseSelect.addEventListener('change', function () {
+    rebuildLoopSelects({ frontFirst: true });
+    updateLink();
+  });
+
+  front9Course.addEventListener('change', function () {
+    rebuildLoopSelects();
+    updateLink();
+  });
+
+  back9Course.addEventListener('change', function () {
+    rebuildLoopSelects();
+    updateLink();
+  });
+
+  roundDate.addEventListener('change', updateLink);
+
+  // 다른 화면(예: 06. 골프장 상세 "이 골프장에서 스코어 등록")에서 골프장을 지정해 진입한 경우
+  // ?course= 값으로 골프장 select를 미리 선택해둔다.
+  var initParams = new URLSearchParams(location.search);
+  var initCourse = initParams.get('course');
+  if (initCourse && Array.prototype.some.call(courseSelect.options, function (o) { return o.value === initCourse; })) {
+    courseSelect.value = initCourse;
+  }
+
+  rebuildLoopSelects({ frontFirst: true });
+  updateLink();
+})();
+</script>
+</body></html>

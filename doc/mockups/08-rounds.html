@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>ScoreCaddie - 스코어 조회</title><link rel="stylesheet" href="_shared.css">
+<style>
+  .filter-row { display:flex; gap:8px; margin-bottom:8px; }
+  .filter-row input[type=date] { margin-bottom:0; }
+  .filter-row .to-sep { align-self:center; color:var(--text-muted); font-size:12px; }
+  .filter-row select { margin-bottom:0; }
+
+  .seg { display:flex; background:var(--card-bg); border-radius:10px; padding:3px; margin-bottom:10px; }
+  .seg button {
+    flex:1; border:none; background:transparent; padding:9px 0; font-size:12.5px; font-weight:600;
+    color:var(--text-muted); border-radius:8px; cursor:pointer; font-family:inherit;
+  }
+  .seg button.active { background:var(--primary); color:#fff; }
+
+  .search-btn-row { display:flex; gap:8px; margin-bottom:14px; }
+  .search-btn-row .btn { padding:9px; font-size:12.5px; }
+  .search-btn-row .btn.secondary { flex:0 0 70px; }
+
+  .total-count { font-size:12px; color:var(--text-muted); margin-bottom:8px; }
+  .list-item .user-tag { color:var(--primary); font-weight:700; }
+  .empty-state { text-align:center; color:var(--text-muted); font-size:12.5px; padding:30px 0; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>ScoreCaddie</span></div>
+  <div class="topbar"><a href="04-dashboard.html" class="back">‹ 뒤로</a><h1>스코어 조회</h1><span></span></div>
+  <div class="content">
+
+    <label>조회 기간</label>
+    <div class="filter-row">
+      <input type="date" id="filter-from" value="2026-06-01">
+      <span class="to-sep">~</span>
+      <input type="date" id="filter-to" value="2026-07-16">
+    </div>
+
+    <label>골프장</label>
+    <select id="filter-course">
+      <option value="ALL">전체 골프장</option>
+      <option>레이크사이드 CC</option>
+      <option>파인밸리 GC</option>
+      <option>선셋힐스 CC</option>
+      <option>그린밸리 CC</option>
+    </select>
+
+    <label>사용자</label>
+    <div class="seg" id="scope-seg">
+      <button type="button" class="active" data-scope="me">내 기록만</button>
+      <button type="button" data-scope="all">전체 회원</button>
+    </div>
+
+    <div class="search-btn-row">
+      <button type="button" class="btn" id="search-btn">검색</button>
+      <button type="button" class="btn secondary" id="reset-btn">초기화</button>
+    </div>
+
+    <div class="total-count" id="total-count">전체 4건</div>
+
+    <div id="round-list"></div>
+    <div class="empty-state" id="empty-state" style="display:none;">조건에 맞는 라운드가 없습니다</div>
+  </div>
+  <div class="navbar">
+    <a href="04-dashboard.html"><span class="navicon">🏠</span>홈</a>
+    <a href="05-courses.html"><span class="navicon">⛳</span>골프장</a>
+    <a href="08-rounds.html" class="active"><span class="navicon">📋</span>스코어</a>
+    <a href="10-profile.html"><span class="navicon">👤</span>마이</a>
+  </div>
+  <div class="screen-label">8. 스코어 조회 — 09(라운드 상세) 골프장 연계 파라미터 추가 (2026-07-16)</div>
+</div>
+<script>
+(function () {
+  var CURRENT_USER_ID = 'me';
+
+  // 회원 mock (User.thirdPartyConsent 반영). 실제 구현 시 서버에서 JOIN 처리.
+  var USERS = {
+    me:  { name: '재홍', consent: true },
+    u2:  { name: '이서연', consent: false },
+    u3:  { name: '박도윤', consent: true },
+    u5:  { name: '최민준', consent: true },
+    u6:  { name: '정하은', consent: false },
+    u7:  { name: '강태현', consent: true },
+    u8:  { name: '윤서아', consent: true }
+  };
+
+  // 라운드 mock 데이터. 실제 구현 시 GET /api/rounds?from=&to=&course=&scope= 응답으로 대체.
+  var ALL_ROUNDS = [
+    { userId: 'me', course: '레이크사이드 CC', date: '2026-07-12', score: 88, weather: '☁️ 맑음' },
+    { userId: 'me', course: '파인밸리 GC',   date: '2026-07-05', score: 92, weather: '🌥️ 흐림' },
+    { userId: 'me', course: '레이크사이드 CC', date: '2026-06-28', score: 85, weather: '☀️ 맑음' },
+    { userId: 'me', course: '선셋힐스 CC',   date: '2026-06-20', score: 95, weather: '🌧️ 비' },
+    { userId: 'u2', course: '그린밸리 CC',   date: '2026-07-10', score: 90, weather: '☀️ 맑음' },
+    { userId: 'u3', course: '파인밸리 GC',   date: '2026-07-08', score: 84, weather: '☁️ 맑음' },
+    { userId: 'u5', course: '레이크사이드 CC', date: '2026-07-14', score: 91, weather: '☀️ 맑음' },
+    { userId: 'u6', course: '선셋힐스 CC',   date: '2026-06-25', score: 99, weather: '🌧️ 비' },
+    { userId: 'u7', course: '그린밸리 CC',   date: '2026-07-01', score: 78, weather: '☀️ 맑음' },
+    { userId: 'u8', course: '레이크사이드 CC', date: '2026-06-15', score: 93, weather: '🌥️ 흐림' }
+  ];
+
+  var scope = 'me';
+
+  var scopeSeg = document.getElementById('scope-seg');
+  var listEl = document.getElementById('round-list');
+  var emptyState = document.getElementById('empty-state');
+  var totalCount = document.getElementById('total-count');
+
+  function applyFilter() {
+    var from = document.getElementById('filter-from').value;
+    var to = document.getElementById('filter-to').value;
+    var course = document.getElementById('filter-course').value;
+
+    var filtered = ALL_ROUNDS.filter(function (r) {
+      if (scope === 'me') {
+        if (r.userId !== CURRENT_USER_ID) { return false; }
+      } else {
+        // 전체 회원 조회 — 본인 포함 모든 대상에 대해 정보제공 동의(thirdPartyConsent=true)한
+        // 유저의 라운드만 노출. 본인 데이터라도 동의하지 않았다면 이 모드에서는 빠진다
+        // ("내 기록만" 모드에서는 동의 여부와 무관하게 항상 조회 가능).
+        var u = USERS[r.userId];
+        if (!u || !u.consent) { return false; }
+      }
+      if (from && r.date < from) { return false; }
+      if (to && r.date > to) { return false; }
+      if (course !== 'ALL' && r.course !== course) { return false; }
+      return true;
+    });
+
+    render(filtered);
+  }
+
+  function roundHref(r) {
+    var uname = USERS[r.userId] ? USERS[r.userId].name : '알 수 없음';
+    var qs = new URLSearchParams({
+      course: r.course,
+      date: r.date,
+      score: String(r.score),
+      weather: r.weather,
+      ownerId: r.userId,
+      owner: uname
+    });
+    return '09-round-detail.html?' + qs.toString();
+  }
+
+  function render(list) {
+    totalCount.textContent = '전체 ' + list.length + '건';
+    if (!list.length) {
+      listEl.innerHTML = '';
+      emptyState.style.display = '';
+      return;
+    }
+    emptyState.style.display = 'none';
+
+    listEl.innerHTML = list.map(function (r) {
+      var subParts = [r.date.replace(/-/g, '.'), r.weather];
+      if (scope === 'all') {
+        var uname = USERS[r.userId] ? USERS[r.userId].name : '알 수 없음';
+        subParts.push('<span class="user-tag">' + uname + '</span>');
+      }
+      return (
+        '<a href="' + roundHref(r) + '" class="list-item">' +
+          '<div><div class="title">' + r.course + '</div><div class="sub">' + subParts.join(' · ') + '</div></div>' +
+          '<div class="value">' + r.score + '타</div>' +
+        '</a>'
+      );
+    }).join('');
+  }
+
+  scopeSeg.querySelectorAll('button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      scopeSeg.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      scope = btn.dataset.scope;
+      applyFilter();
+    });
+  });
+
+  document.getElementById('search-btn').addEventListener('click', applyFilter);
+  document.getElementById('reset-btn').addEventListener('click', function () {
+    document.getElementById('filter-from').value = '2026-06-01';
+    document.getElementById('filter-to').value = '2026-07-16';
+    document.getElementById('filter-course').value = 'ALL';
+    scope = 'me';
+    scopeSeg.querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.scope === 'me');
+    });
+    applyFilter();
+  });
+
+  applyFilter();
+})();
+</script>
+</body></html>

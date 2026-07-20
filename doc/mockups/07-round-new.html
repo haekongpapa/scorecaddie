@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>ScoreCaddie - 스코어 등록</title><link rel="stylesheet" href="_shared.css"></head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>ScoreCaddie</span></div>
+  <div class="topbar"><a href="04-dashboard.html" class="back" id="back-link">‹ 뒤로</a><h1 id="page-title">스코어 등록</h1><span></span></div>
+  <div class="content">
+    <label>골프장</label>
+    <select><option>레이크사이드 CC</option></select>
+    <label>라운드 날짜</label>
+    <input type="date" value="2026-07-15">
+
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center; margin:4px 0 16px;">
+      <span class="muted">☁️ 라운드 당시 날씨</span>
+      <span style="font-size:13px; font-weight:600;">맑음 24℃</span>
+    </div>
+
+    <h2 class="section-title">홀별 타수</h2>
+    <div class="hole-list" style="margin-bottom:14px;">
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">1홀</span><span class="par">Par 4</span></div>
+        <input class="stroke-input" value="4">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">2홀</span><span class="par">Par 5</span></div>
+        <input class="stroke-input" value="5">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">3홀</span><span class="par">Par 3</span></div>
+        <input class="stroke-input" value="4">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">4홀</span><span class="par">Par 4</span></div>
+        <input class="stroke-input" value="3">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">5홀</span><span class="par">Par 4</span></div>
+        <input class="stroke-input" value="5">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">6홀</span><span class="par">Par 3</span></div>
+        <input class="stroke-input" value="4">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">7홀</span><span class="par">Par 5</span></div>
+        <input class="stroke-input" value="4">
+        <input type="text" class="hole-memo" value="워터해저드 OB" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">8홀</span><span class="par">Par 4</span></div>
+        <input class="stroke-input" value="3">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">9홀</span><span class="par">Par 4</span></div>
+        <input class="stroke-input" value="4">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">10홀</span><span class="par">Par 4</span></div>
+        <input class="stroke-input" value="5">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">11홀</span><span class="par">Par 4</span></div>
+        <input class="stroke-input" value="4">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">12홀</span><span class="par">Par 3</span></div>
+        <input class="stroke-input" value="4">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">13홀</span><span class="par">Par 5</span></div>
+        <input class="stroke-input" value="3">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">14홀</span><span class="par">Par 4</span></div>
+        <input class="stroke-input" value="5">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">15홀</span><span class="par">Par 4</span></div>
+        <input class="stroke-input" value="4">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">16홀</span><span class="par">Par 3</span></div>
+        <input class="stroke-input" value="4">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">17홀</span><span class="par">Par 5</span></div>
+        <input class="stroke-input" value="3">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+      <div class="hole-card">
+        <div class="hole-label"><span class="n">18홀</span><span class="par">Par 4</span></div>
+        <input class="stroke-input" value="4">
+        <input type="text" class="hole-memo" placeholder="메모">
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-top:1px solid var(--border); margin-bottom:14px;">
+      <span class="muted">합계 (Par 72)</span><span style="font-weight:700; font-size:16px;">88타 <span style="font-size:12px; color:#D85A30; font-weight:600;">(+16)</span></span>
+    </div>
+
+    <a href="09-round-detail.html" class="btn" id="save-btn">저장</a>
+  </div>
+  <div class="screen-label" id="screen-label">7. 스코어 등록 (신규)</div>
+</div>
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  if (params.get('edit') === '1') {
+    document.getElementById('page-title').textContent = '스코어 수정';
+    document.getElementById('save-btn').textContent = '수정 완료';
+    document.getElementById('back-link').setAttribute('href', '09-round-detail.html');
+    document.getElementById('screen-label').textContent = '7. 스코어 등록 화면 재사용 (수정 모드)';
+  }
+})();
+</script>
+</body></html>

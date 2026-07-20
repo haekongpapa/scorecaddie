@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>ScoreCaddie - 마이페이지</title><link rel="stylesheet" href="_shared.css">
+<style>
+  .setting-row {
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--card-bg); border-radius:10px; padding:12px 14px; margin-bottom:8px;
+  }
+  .setting-row .title { font-size:13.5px; font-weight:600; }
+  .setting-row .sub { font-size:11px; color:var(--text-muted); margin-top:2px; max-width:250px; line-height:1.35; }
+
+  .switch { position:relative; display:inline-block; width:38px; height:22px; flex:0 0 auto; }
+  .switch input { opacity:0; width:0; height:0; }
+  .switch .slider {
+    position:absolute; cursor:pointer; inset:0; background:var(--border);
+    border-radius:22px; transition:background .15s;
+  }
+  .switch .slider::before {
+    position:absolute; content:""; height:16px; width:16px; left:3px; bottom:3px;
+    background:#fff; border-radius:50%; transition:transform .15s;
+  }
+  .switch input:checked + .slider { background:var(--primary); }
+  .switch input:checked + .slider::before { transform:translateX(16px); }
+
+  .consent-status { font-size:10.5px; font-weight:700; margin-top:2px; }
+  .consent-status.on { color:var(--primary); }
+  .consent-status.off { color:var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>ScoreCaddie</span></div>
+  <div class="topbar"><a href="04-dashboard.html" class="back">‹ 뒤로</a><h1>마이페이지</h1><span></span></div>
+  <div class="content">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
+      <div class="avatar">재홍</div>
+      <div>
+        <div style="font-weight:600; font-size:15px;">재홍</div>
+        <div class="muted">haekongpapa@gmail.com</div>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-box"><div class="num">24</div><div class="lbl">총 라운드</div></div>
+      <div class="stat-box"><div class="num">89.4</div><div class="lbl">평균 타수</div></div>
+      <div class="stat-box"><div class="num">85</div><div class="lbl">베스트 스코어</div></div>
+    </div>
+
+    <h2 class="section-title">개인정보</h2>
+    <div class="setting-row">
+      <div>
+        <div class="title">타인에게 정보 제공 동의</div>
+        <div class="sub">골프장 동반자 등 타인에게 일부 정보(이름·라운드 기록 등)가 공유될 수 있어요</div>
+        <div class="consent-status off" id="consent-status">동의 안 함</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="consent-switch">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <h2 class="section-title">설정</h2>
+    <a href="#" class="list-item"><div class="title">비밀번호 변경</div><div>›</div></a>
+    <a href="#" class="list-item"><div class="title">알림 설정</div><div>›</div></a>
+    <a href="01-landing.html" class="list-item"><div class="title" style="color:#D85A30;">로그아웃</div><div>›</div></a>
+  </div>
+  <div class="navbar">
+    <a href="04-dashboard.html"><span class="navicon">🏠</span>홈</a>
+    <a href="05-courses.html"><span class="navicon">⛳</span>골프장</a>
+    <a href="08-rounds.html"><span class="navicon">📋</span>스코어</a>
+    <a href="10-profile.html" class="active"><span class="navicon">👤</span>마이</a>
+  </div>
+  <div class="screen-label">10. 마이페이지 — 제3자 정보제공 동의 설정 추가 (2026-07-16)</div>
+</div>
+<script>
+(function () {
+  // User.thirdPartyConsent 현재 값 (mock). 실제 구현 시 세션/API 응답으로 초기값 세팅.
+  var consentSwitch = document.getElementById('consent-switch');
+  var consentStatus = document.getElementById('consent-status');
+
+  function render() {
+    if (consentSwitch.checked) {
+      consentStatus.textContent = '동의함';
+      consentStatus.classList.remove('off');
+      consentStatus.classList.add('on');
+    } else {
+      consentStatus.textContent = '동의 안 함';
+      consentStatus.classList.remove('on');
+      consentStatus.classList.add('off');
+    }
+  }
+
+  consentSwitch.addEventListener('change', function () {
+    render();
+    // 실제 구현 시: PATCH /api/me { thirdPartyConsent: consentSwitch.checked }
+  });
+
+  render();
+})();
+</script>
+</body></html>

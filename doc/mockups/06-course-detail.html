@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>ScoreCaddie - 골프장 상세</title><link rel="stylesheet" href="_shared.css"></head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>ScoreCaddie</span></div>
+  <div class="topbar"><a href="05-courses.html" class="back">‹ 뒤로</a><h1>골프장 상세</h1><span></span></div>
+  <div class="content">
+    <div id="map-box" style="background:var(--card-bg2); border-radius:12px; height:120px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; color:var(--text-muted); font-size:12px;">지도 (좌표 기반)</div>
+    <h2 id="course-name" style="font-size:18px; margin:0 0 4px;">레이크사이드 CC</h2>
+    <p class="muted" id="course-meta" style="margin:0 0 16px;">경기도 용인시 처인구 · 18홀 · 민간</p>
+    <a href="07-round-new-step1.html?course=%EB%A0%88%EC%9D%B4%ED%81%AC%EC%82%AC%EC%9D%B4%EB%93%9C+CC" class="btn" style="margin-bottom:20px;" id="register-link">이 골프장에서 스코어 등록</a>
+
+    <h2 class="section-title">내 라운드 이력</h2>
+    <a href="09-round-detail.html" class="list-item">
+      <div><div class="title">2026.07.12</div></div>
+      <div class="value">88타</div>
+    </a>
+    <a href="09-round-detail.html" class="list-item">
+      <div><div class="title">2026.06.28</div></div>
+      <div class="value">85타</div>
+    </a>
+  </div>
+  <div class="screen-label">6. 골프장 상세</div>
+</div>
+<script>
+(function () {
+  // 05. 골프장 목록에서 선택한 골프장을 ?course= 로 전달받아 반영 (mock 데이터).
+  // 실제 구현 시 골프장명 대신 golfCourseId로 전달하고 GolfCourse 단건 조회로 대체.
+  var COURSES = {
+    '레이크사이드 CC': { address: '경기도 용인시 처인구', holes: 18, type: '민간', geo: true },
+    '파인밸리 GC': { address: '강원도 춘천시', holes: 18, type: '민간', geo: true },
+    '선셋힐스 CC': { address: '충청남도 천안시', holes: 27, type: '공공', geo: false },
+    '그린밸리 CC': { address: '경상북도 경주시', holes: 18, type: '공공', geo: true }
+  };
+  var DEFAULT_COURSE = '레이크사이드 CC';
+
+  var params = new URLSearchParams(location.search);
+  var courseName = params.get('course');
+  if (!courseName || !COURSES[courseName]) { courseName = DEFAULT_COURSE; }
+  var info = COURSES[courseName];
+
+  document.getElementById('course-name').textContent = courseName;
+  document.getElementById('course-meta').textContent = info.address + ' · ' + info.holes + '홀 · ' + info.type;
+
+  var mapBox = document.getElementById('map-box');
+  if (!info.geo) {
+    mapBox.textContent = '지도 좌표 확인 중 (needsGeocoding)';
+  }
+
+  document.getElementById('register-link').setAttribute(
+    'href', '07-round-new-step1.html?course=' + encodeURIComponent(courseName)
+  );
+})();
+</script>
+</body></html>

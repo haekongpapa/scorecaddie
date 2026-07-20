@@ -1,5 +1,5 @@
 // ScoreCaddie DB 스키마
-// 설계 근거: docs 분석/설계 요약 PPT (User / GolfCourse / Round / HoleScore 4개 핵심 테이블)
+// 설계 근거: docs 분석/설계 요약 PPT + doc/pages.md (User / GolfCourse / GolfCourseLoop / GolfCourseHole / Round / HoleScore)
 // NextAuth(Auth.js) Prisma Adapter 사용을 위해 Account/Session/VerificationToken 포함
 
 generator client {
@@ -25,6 +25,12 @@ model User {
   image         String?
   // 이메일/비밀번호 로그인용 (소셜 로그인만 쓰는 사용자는 null)
   passwordHash  String?
+  // 골프장 Par 등록/CSV 업로드 등 관리자 화면 접근 제어용
+  role          Role      @default(USER)
+
+  // 타인(제3자)에게 개인정보 제공 동의 여부. (2026-07-16 신규)
+  // 회원가입 화면(선택 항목, 미동의 상태로 가입 가능)에서 최초 수집하고 마이페이지에서 변경 가능.
+  thirdPartyConsent Boolean @default(false)
 
   accounts Account[]
   sessions Session[]
@@ -32,6 +38,11 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
 }
 
 model Account {
@@ -96,12 +107,48 @@ model GolfCourse {
   subCategory    String? // 세부업종
   publicPrivate  String? // 공공/민간 구분
 
+  loops  GolfCourseLoop[]
   rounds Round[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([externalOrgCd, externalMngNo])
+}
+
+// 골프장을 구성하는 9홀 단위 루프(구간). (2026-07-16 신규 — GolfCourseLoop 도입)
+// 단순 18홀 골프장은 보통 "전반"/"후반" 2개 루프로만 구성되고, 27/36홀 골프장은
+// 동/서/남 코스처럼 3개 이상의 루프를 갖고 라운드마다 그중 2개를 조합해 18홀을 만든다.
+// (관리자가 직접 등록/보정 — 공공데이터포털에는 루프 단위 정보가 없음)
+model GolfCourseLoop {
+  id           String @id @default(cuid())
+  golfCourseId String
+  name         String // 예: "전반"/"후반" 또는 "동코스"/"서코스"/"남코스"
+  sortOrder    Int    @default(0) // 관리자 화면 표시 순서
+
+  golfCourse  GolfCourse       @relation(fields: [golfCourseId], references: [id], onDelete: Cascade)
+  holes       GolfCourseHole[]
+  roundsFront Round[]          @relation("RoundFrontLoop")
+  roundsBack  Round[]          @relation("RoundBackLoop")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([golfCourseId, name])
+}
+
+// 루프별 홀 규정타수(Par). 공공데이터에는 없는 정보라 관리자가 직접 입력/보정.
+// 코스 개편 등으로 par가 바뀔 수 있으므로 "현재 기준" 값이며, 실제 라운드 기록은
+// HoleScore.par 에 등록 시점 값을 스냅샷으로 남겨 과거 기록의 정합성을 보존한다.
+model GolfCourseHole {
+  id         String @id @default(cuid())
+  loopId     String
+  holeNumber Int    // 1~9 (루프 내 홀 번호)
+  par        Int    // 3, 4, 5
+
+  loop GolfCourseLoop @relation(fields: [loopId], references: [id], onDelete: Cascade)
+
+  @@unique([loopId, holeNumber])
 }
 
 // ---------------------------------------------------------------------------
@@ -114,12 +161,23 @@ model Round {
   golfCourseId String
   playedAt     DateTime
 
+  // 스코어 등록 Step1(코스 선택)에서 선택하는 홀 수. 9 또는 18. (2026-07-16 신규)
+  holesPlayed Int @default(18)
+
+  // 전반/후반에 실제로 사용한 루프 참조. (2026-07-16: 자유텍스트 라벨 → GolfCourseLoop FK로 교체)
+  // 골프장에 루프가 아직 등록되지 않은 경우(관리자 데이터 이관 전 등)를 위해 nullable로 둔다.
+  // 9홀 라운드는 backLoopId가 null.
+  frontLoopId String?
+  backLoopId  String?
+
   // 라운드 등록 시점 골프장 좌표 기반 날씨 스냅샷 (JSON 텍스트로 저장)
   weatherSnapshot String? @db.Text
   memo            String? @db.Text
 
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  golfCourse GolfCourse @relation(fields: [golfCourseId], references: [id])
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  golfCourse GolfCourse      @relation(fields: [golfCourseId], references: [id])
+  frontLoop  GolfCourseLoop? @relation("RoundFrontLoop", fields: [frontLoopId], references: [id])
+  backLoop   GolfCourseLoop? @relation("RoundBackLoop", fields: [backLoopId], references: [id])
   holeScores HoleScore[]
 
   createdAt DateTime @default(now())
@@ -133,9 +191,43 @@ model HoleScore {
   roundId    String
   holeNumber Int    // 1~18
   strokes    Int
-  memo       String? @db.Text
+  // 등록 시점 GolfCourseHole.par 스냅샷 (골프장 par가 나중에 바뀌어도 과거 기록 유지)
+  par        Int?
+
+  // --- 스코어카드 상세 입력 (2026-07-16 신규, doc/mockups/07-round-new-step2.html 기준) ---
+  // 구버전 스코어 등록 화면(07-round-new.html, 타수 직접 입력)에서는 아래 상세 필드가
+  // 모두 비워질 수 있으며, 이 경우 strokes만으로 기록이 유지된다.
+  teeShotResult TeeShotResult? // 티샷 결과 (1.티샷 결과)
+
+  // 페널티/OB 타수 (2.페널티/OB) — 티샷결과가 PENALTY/OB일 때 화면에서 자동 가산되지만
+  // 저장 값은 사용자가 최종 조정한 값을 그대로 기록한다.
+  penaltyStrokes Int     @default(0)
+  obStrokes      Int     @default(0)
+  bunkerUsed     Boolean @default(false) // 그린주변벙커 사용 여부
+
+  // 온그린 핀거리 (3.온그린 핀거리) — NEAR면 pinDistanceMeters(0~20)에 구체값, FAR면 null
+  pinDistanceType   PinDistanceType?
+  pinDistanceMeters Int?
+
+  // 스코어 상세 (4.스코어) — onGreenStrokes + puttStrokes = strokes 가 되도록 화면에서 계산해 저장
+  onGreenStrokes Int?
+  puttStrokes    Int?
+
+  memo String? @db.Text
 
   round Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
   @@unique([roundId, holeNumber])
+}
+
+enum TeeShotResult {
+  FAIRWAY // 페어웨이 안착
+  MISS    // 페어웨이 실패
+  PENALTY // 페널티
+  OB      // OB
+}
+
+enum PinDistanceType {
+  NEAR // 0~20m (pinDistanceMeters 참고)
+  FAR  // 20m 이상
 }
