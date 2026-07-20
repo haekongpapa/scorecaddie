@@ -67,10 +67,12 @@ http://localhost:3000 접속
 - CSV 업로드 처리 로직(포맷/매칭/오류 처리) 상세 설계: `doc/admin-csv-upload.md`
 
 ## 아직 채워야 할 값 (.env)
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — 구글 소셜 로그인 (Google Cloud Console)
-- `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` — 카카오 소셜 로그인 (Kakao Developers)
-- `PUBLIC_DATA_API_KEY` — 공공데이터포털 골프장 인허가 데이터
+- `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` — 카카오 소셜 로그인 (Kakao Developers, 사용자가 별도 진행 중)
 - `WEATHER_API_KEY` — 기상청 단기예보 API
+
+`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`(구글 로그인 실사용 확인 완료)와
+`PUBLIC_DATA_API_KEY`(골프장 공공 데이터 API, `doc/admin-golfcourse-sync.md` 참고)는
+이미 값이 채워져 있습니다.
 
 `AUTH_SECRET` 은 이미 랜덤 값으로 채워져 있습니다 (운영 배포 시에는 새로 발급 권장).
 

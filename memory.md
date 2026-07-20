@@ -737,3 +737,123 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 - 사용자 요청: "지금까지 진행한 내용 memory.md와 필요한 파일 업데이트하고 git에 커밋까지 진행해줘."
 - `.gitignore`에 `app/.env`가 이미 제외되어 있음을 재확인(민감정보 커밋 방지) 후 `git add`/`git commit` 진행.
 - **push는 하지 않음** — root README.md에 명시된 기존 방침대로, 실제 GitHub push는 사용자가 VS Code의 Git Credential Manager(OAuth)로 직접 수행(이 세션엔 GitHub 인증 수단이 없음). 커밋만 로컬 저장소에 완료.
+
+## 49. git push 완료 확인 (2026-07-20)
+
+- 샌드박스에서 `index.lock`/`HEAD.lock` 잔여 파일로 인해 `git add`/`git commit`/`git reset` 등 쓰기 작업이 계속 "Operation not permitted"로 실패(사용자가 Windows 탐색기에서 직접 삭제하고 VS Code를 완전히 종료했음에도 샌드박스 쪽 `.git` 마운트 캐시가 꼬여 있는 것으로 판단 — 세션 내에서 해결 불가로 결론).
+- 사용자에게 로컬 터미널에서 직접 `git add -A && git commit`/`git push` 실행을 요청 → 사용자가 직접 수행 후 "푸시완료" 보고.
+- `git log --oneline -5`(로컬)와 `git log origin/main --oneline -3`(원격) 조회로 커밋 `85bc279`(인증 3종 세트/대시보드/마이페이지 구현, 버그 수정 5건, OAuth 어댑터 연결)가 원격에 정확히 반영된 것을 확인. 읽기 작업(`git log`, `git status`)은 이후에도 정상 동작하나 쓰기 작업은 이 세션 내내 불가능한 상태로 남음(다음 세션은 새 샌드박스이므로 재발 여부 다시 확인 필요).
+
+## 50. 11번 관리자 골프장 Par 관리 목업 — 공공 데이터 업로드/최종 업데이트 표시 추가 (2026-07-20)
+
+- 사용자 요청: "11-admin-courses 골프장 Par 관리 화면 mockup만 우선 수정. 골프장 공공 데이터 업로드 기능 추가. 최종 업데이트 날짜 표시 필요." — **목업까지만** 반영(10-1번 때와 동일한 패턴, `pages.md`/`app/src`는 아직 손대지 않음).
+- `doc/mockups/11-admin-courses.html`에 상단(관리자 전용 배지 바로 아래, 기존 "CSV 일괄 업로드" 버튼 위)에 `.card.sync-card` 블록 추가:
+  - 제목 "🌐 골프장 공공 데이터 업로드" + 설명 "공공데이터포털 골프장 정보 API에서 최신 목록을 가져와요"
+  - "최종 업데이트: 2026-07-18 14:32" 표시
+  - 우측에 "업로드" 버튼(`.btn.secondary`, 작은 사이즈로 `.sync-card .btn` 스타일 추가)
+  - 기존 "CSV 일괄 업로드"(수동 파일 업로드)와는 별개 기능으로 구분 — 공공데이터포털 API 연동 자동 동기화 vs 수동 CSV 업로드, 두 경로 모두 유지.
+- 기존 각 골프장 행의 "최종 수정일"(예: "2026-07-10 수정")은 원래 있던 것 그대로 유지 — 이번에 추가한 "최종 업데이트"는 공공데이터 동기화 자체의 최종 실행 시각을 의미하는 페이지 레벨 정보로, 개별 골프장 행의 수정일과는 다른 개념.
+- `screen-label`을 "공공 데이터 업로드/최종 업데이트 표시 추가 (2026-07-20)"로 갱신.
+- bash heredoc → `/tmp/sc/` 스테이징 → `cp` → `wc -c`/`md5sum` 일치 확인 → Read 툴로 최종 내용 재확인, 프로젝트 규칙(Edit/Write 금지) 준수.
+- **`doc/pages.md`, `doc/개발리스트.md`, `app/src`는 이번 변경에 포함하지 않음** — 사용자 승인 후 다음 단계로 pages.md 11번 섹션 반영 + `app/src/app/admin/golf-courses/page.tsx`(현재 placeholder) 실제 구현 예정.
+
+### 다음 세션 시작 시
+
+- 사용자가 11번 목업 리뷰 후 "pages.md 반영하고 실제 구현진행" 같은 승인을 주면, 10번/10-1번 때와 동일한 절차(pages.md 갱신 → 실제 API/컴포넌트 구현 → 개발리스트.md 갱신)로 진행.
+
+## 51. 11번 목업에 업로드 결과 토스트 인터랙션 추가 (2026-07-20)
+
+- 사용자 질문: "업로드 버튼을 클릭했을 때 동작을 설명해봐" → 설명 후 "결과를 토스트로 표시한다고 했는데 목업 화면에 표시 해 줄 수 있어?" 요청.
+- `doc/mockups/11-admin-courses.html`에 실제 클릭 시 흉내 낼 수 있도록 JS 인터랙션 추가(10-profile.html의 동의 스위치 스크립트와 동일한 패턴 — 목업 단계에서도 순수 정적이 아닌 mock 인터랙션 허용):
+  - 버튼 클릭 → "동기화 중..." 비활성화 상태로 0.7초 대기(실제 API 호출을 흉내) → 버튼 복구 + "최종 업데이트" 텍스트를 현재 시각으로 갱신 + 화면 하단에 토스트("신규 2개 추가 · 3개 갱신 완료") 2.5초간 표시 후 자동 숨김.
+  - 토스트 위치를 위해 `.phone`에 `position: relative` 추가(공유 CSS는 건드리지 않고 이 페이지 `<style>` 블록에서만 오버라이드).
+  - 스크립트 내 주석으로 실제 구현 시 연결 지점 명시: `POST /api/admin/golf-courses/sync` 응답의 `{ added, updated, updatedAt }`로 토스트/텍스트를 채우는 구조가 되어야 함.
+- bash heredoc → `/tmp/sc/` 스테이징 → `cp` → `wc -c`/`md5sum` 일치 확인 → Read로 최종 내용 재확인.
+- 여전히 목업 단계만 진행 — `pages.md`/`app/src`는 미반영.
+
+## 52. 11번 관리자 골프장 Par 관리 — 공공 데이터 업로드 실제 구현 (2026-07-20)
+
+- 사용자 요청: "해당 내용 pages.md에 반영하고 구현시작해." (50/51번에서 목업만 진행한 공공 데이터 업로드 + 최종 업데이트 표시 기능을 pages.md 반영 + 실제 코드 구현까지 진행)
+- **설계 전 조사(WebSearch)**: 행정안전부_생활_골프장 데이터셋이 `data.go.kr`의 **파일데이터**(`fileData.do`)로 제공되며 실시간 Open API가 아님을 확인 → 애초 대화에서 언급했던 "외부 API 자동 호출" 방식 대신, **관리자가 다운로드한 CSV 파일을 업로드**하는 방식으로 설계 변경(목업의 "업로드" 버튼 라벨과도 자연스럽게 일치). 정확한 CSV 컬럼명은 실제 파일 없이는 확정 불가라, `doc/admin-golfcourse-sync.md`에 별칭(alias) 매핑 표와 "TODO: 실제 파일로 검증" 메모를 남겨둠.
+- **스키마**: `GolfCourse` 모델에 이미 `externalOrgCd`/`externalMngNo`/`businessStatus`/`subCategory`/`publicPrivate`/`rawCoordX`/`rawCoordY`/`needsGeocoding` 필드가 이전 세션에서부터 존재(공공데이터 연동을 염두에 두고 미리 설계돼 있었음) — **스키마 변경 없이** 그대로 활용. "최종 업데이트" 값도 별도 이력 테이블 없이 `GolfCourse.externalOrgCd IS NOT NULL` 중 최신 `updatedAt`으로 근사(현재는 다른 기능이 이 값을 안 건드리므로 근사가 아니라 정확한 값).
+- **신규/수정 파일**:
+  - `app/src/lib/csv.ts`(신규): 외부 의존성 없는 간단 CSV 파서 + 헤더 별칭 매칭 유틸(`parseCsv`, `findColumnIndex`) — 13번 CSV Par 업로드 구현 시에도 재사용 가능하게 범용으로 작성
+  - `app/src/app/api/admin/golf-courses/sync/route.ts`(신규): `POST` — 세션/role 검사 → CSV 파싱(UTF-8만 지원) → `externalOrgCd`+`externalMngNo` 매칭 키로 `GolfCourse` upsert(있으면 update, 없으면 `needsGeocoding:true`로 create) → `{addedCount, updatedCount, skippedCount, errors, lastUpdatedAt}` 응답
+  - `app/src/components/PublicDataSyncCard.tsx`(신규, client): 숨김 파일 인풋 + "업로드" 버튼 → 업로드 중 로딩 → 완료 시 토스트("신규 N개 추가 · M개 갱신 완료") + "최종 업데이트" 텍스트 갱신, 실패 시 에러 메시지 표시
+  - `app/src/components/GolfCourseAdminList.tsx`(신규, client): 검색 입력(이름/주소 클라이언트 필터) + 골프장 목록(루프 수 배지, Par 등록 상태 배지 완료/부분/미등록 로직, 12번 화면으로 링크)
+  - `app/src/app/admin/golf-courses/page.tsx`(placeholder → 실구현): 세션+role 서버 가드, `GolfCourse`+`GolfCourseLoop`+`GolfCourseHole` 조회 후 Par 등록 상태 계산, 위 두 컴포넌트 조합
+  - `app/src/app/admin/golf-courses/[id]/par/page.tsx`, `app/src/app/admin/golf-courses/upload/page.tsx`(신규 placeholder): 11번 화면의 행 클릭/CSV 업로드 버튼이 404 나지 않도록 최소 placeholder 생성(12번/13번은 아직 미구현 범위)
+  - `app/src/middleware.ts`(수정): **버그 수정** — 기존엔 `/admin/*` 경로를 로그인 여부만 검사하고 `role`은 전혀 검사하지 않아, 일반 회원도 URL을 직접 입력하면 관리자 화면에 진입 가능했음. `req.auth.user.role !== "ADMIN"`이면 `/dashboard`로 리다이렉트하는 검사 추가(JWT에 이미 role이 실려 있어 Edge 런타임에서도 Prisma 없이 처리 가능). 페이지 자체에도 동일 검사를 중복으로 넣어 이중 방어.
+- **문서 갱신**:
+  - `doc/admin-golfcourse-sync.md`(신규): CSV 포맷 가정/별칭 매핑 표, "왜 업로드 방식인가" 설명, API 처리 순서, "최종 업데이트" 값 산출 근거, 향후 보완 후보(실제 파일 검증/EUC-KR 지원/좌표 변환) 기록
+  - `doc/pages.md` 11번 섹션: python 타겟 치환으로 갱신(공공 데이터 업로드 카드/컴포넌트/데이터 의존성/상태 반영, `diff`로 해당 블록만 바뀐 것 확인)
+  - `doc/개발리스트.md` 11번 섹션: 전부 ⬜ → 대부분 ✅로 갱신(12번/13번 화면 자체는 아직 없어 관련 항목은 🟡로 표기), python 타겟 치환 + `diff` 확인
+- **검증**: `npx tsc --noEmit` 0 에러(EXIT_CODE=0) 확인. 실제 런타임 동작(파일 업로드 흐름, DB 반영)은 샌드박스에서 검증 불가 — **사용자가 로컬에서 실제 공공데이터포털 CSV로 업로드 테스트 필요**. 특히 컬럼 헤더가 문서에 적어둔 별칭과 다르면 "필수 컬럼을 찾을 수 없습니다" 오류가 날 수 있음 — 이 경우 실제 헤더를 알려주면 별칭 표를 교정할 것.
+- **다음 세션 시작 시**: 사용자가 로컬에서 실제 CSV 업로드 테스트 결과(성공/실패, 실제 컬럼 헤더명)를 알려주면 `doc/admin-golfcourse-sync.md`와 `route.ts`의 별칭 매핑을 교정. 이후 12번(루프·Par 편집)/13번(CSV Par 업로드) 중 하나로 이어서 진행하거나, 카카오 OAuth 사용자 테스트 결과 확인.
+
+## 53. 골프장 공공 데이터 업로드 — CSV 업로드 → 실시간 API 방식으로 전면 교체 (2026-07-20)
+
+- 사용자가 실제 API 스펙 문서(`골프장api.txt` 업로드)를 제공: `https://apis.data.go.kr/1741000/golf_courses/info` — **실시간 Open API**로 확인됨. 52번 항목에서 WebSearch로 "파일데이터라 CSV 업로드만 가능"이라 판단했던 게 틀렸음이 드러남(정정).
+- 사용자 질문: "totalCount 획득 후, 100개씩 루프 돌며 DB 작업 vs 전체 count 한번에 가져오기, 판단해서 설명해봐" → 페이지네이션(100개씩, 페이지마다 즉시 upsert) 방식을 추천하고 근거 설명(상한 미확인 위험, 부분 실패 안전성, totalCount는 스냅샷이라 하드코딩 부적절, 1페이지 응답에서 totalCount를 바로 얻어 count 전용 호출 절약 가능, item이 단일 결과일 때 배열이 아닌 객체로 오는 함정 등) → 사용자가 "네가 이야기한 대로 진행해줘" 승인.
+- **API 키 처리**: 업로드된 파일의 `serviceKey`를 `.env`의 기존 `PUBLIC_DATA_API_KEY=""` 자리에 python 정규식으로 그 줄만 교체(다른 라인 영향 없음, 값은 로그/응답에 출력하지 않고 길이(64자)만 확인). 원본 API 스펙 텍스트 파일은 프로젝트 폴더/git에 넣지 않도록 문서에 명시.
+- **`app/src/app/api/admin/golf-courses/sync/route.ts` 전면 재작성**(CSV/multipart 파싱 제거):
+  - `POST`(바디 없음, 버튼 클릭이 곧 트리거) — 세션/role 검사 → `PUBLIC_DATA_API_KEY` 존재 확인 → 1페이지(`numOfRows=100`) 호출해 `totalCount` 획득 + 즉시 upsert → `totalPages = Math.ceil(totalCount/100)`만큼 2페이지부터 순차 호출, 페이지마다 즉시 upsert
+  - 안전장치: `MAX_PAGES=200`(최대 2만 건) 상한, 페이지별 `AbortController` 10초 타임아웃, 페이지 요청 실패 시 그 지점까지 결과 반환(전체 재시도 안 함)
+  - `normalizeItems()`: `items.item`이 단일 객체로 올 수 있는 경우(결과 1건) + `items`가 빈 문자열로 오는 경우(결과 0건) 모두 방어
+  - 필드 매핑(실제 응답으로 확정): `BPLC_NM`→name, `ROAD_NM_ADDR`(없으면 `LOTNO_ADDR`)→address, `SALS_STTS_NM`→businessStatus, `DTIL_TPBIZ_NM`→subCategory, `PBP_SE_NM`→publicPrivate, `OPN_ATMY_GRP_CD`→externalOrgCd, `MNG_NO`→externalMngNo, `CRD_INFO_X/Y`→rawCoordX/Y — 매칭 키는 `externalOrgCd`+`externalMngNo`(기존 `@@unique` 그대로 재사용, 스키마 변경 없음)
+- **`PublicDataSyncCard.tsx` 단순화**: 파일 인풋/`FormData` 제거, 버튼 클릭 → `fetch(POST)` 바로 호출하는 구조로 교체. 토스트/최종 업데이트 텍스트 갱신 로직은 그대로 유지.
+- **문서**: `doc/admin-golfcourse-sync.md` 전면 재작성(실 API 스펙/필드 매핑표/페이지네이션 근거/구현 함정 정리, 이전 CSV 가정 내용 삭제), `doc/pages.md` 11번에 "공공 데이터 업로드 API 구현 방식" 항목 신설(python 타겟 치환 + diff 확인), `doc/개발리스트.md` 11번 갱신, `app/README.md`의 ".env 아직 채워야 할 값" 목록에서 이미 채워진 `GOOGLE_CLIENT_ID`류/`PUBLIC_DATA_API_KEY` 정리(카카오/기상청만 남김) — 겸사겸사 지난 세션에서 놓쳤던 문서 lag도 수정.
+- **검증**: `npx tsc --noEmit` 1차 실행 시 `normalizeItems`의 `items === ""` 비교에서 TS2367(빈 문자열 좁히기 오류 — `!items`가 이미 falsy인 `""`를 걸러내서 이후 `=== ""` 비교가 불가능해짐) 발생 → `if (!items) return [];` 한 줄로 단순화해서 해결, 재실행 결과 EXIT_CODE=0.
+- **미검증 사항(실제 API 호출 자체)**: 샌드박스는 외부 네트워크(apis.data.go.kr) 호출을 실제로 검증할 수 없음 — 사용자가 로컬에서 관리자 계정으로 "업로드" 버튼을 눌러 실제 동작(정상 응답, 페이지네이션 전체 순회, DB 반영) 확인 필요. 특히 이 API의 실제 `numOfRows` 상한이 100을 넘게 허용하는지, rate limit이 있는지는 실사용으로만 확인 가능.
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 실제 "업로드" 버튼 테스트 결과(성공/실패, 실제 반영된 골프장 수, 에러 메시지)를 알려주면 그에 맞춰 후속 조치. 이후 12번(루프·Par 편집)/13번(CSV Par 업로드) 중 하나로 이어서 진행하거나, 카카오 OAuth 사용자 테스트 결과 확인.
+
+## 54. 공공 데이터 업로드 실사용 테스트 완료 확인 (2026-07-20)
+
+- 사용자: "api로 골프장 리스트 가져오는 것 테스트 완료." — 53번에서 실시간 API 방식으로 재구현한 `POST /api/admin/golf-courses/sync`를 로컬에서 실제로 눌러본 결과 정상 동작 확인.
+- 세부 결과(추가/갱신 건수, 에러 유무 등)는 아직 전달받지 않음 — 문제가 있었다면 사용자가 알려줄 것으로 보고 일단 "동작 확인 완료"로만 기록.
+- `doc/개발리스트.md` 11번 "공공 데이터 업로드 API" 행에 실사용 검증 완료 메모 추가(python 타겟 치환).
+
+### 다음 세션 시작 시
+
+- 실제 반영된 골프장 수/이상 유무를 사용자가 추가로 알려주면 기록. 이후 12번(루프·Par 편집)/13번(CSV Par 업로드) 중 하나로 이어서 진행하거나, 카카오 OAuth 테스트 결과 확인.
+
+## 55. 공공 데이터 업로드 실사용 결과: 신규 652개 추가 (2026-07-20)
+
+- 사용자: "652개 추가됨." — 예시 응답의 `totalCount`(652)와 정확히 일치. 페이지네이션(100개씩 7페이지)이 마지막 페이지까지 누락 없이 정상 순회했고, upsert도 전부 `create`로 처리됐음을 확인(신규 DB라 전량 신규 등록된 것으로 보임).
+- `doc/개발리스트.md` 11번 항목에 "신규 652개 추가" 결과 반영.
+- 11번(관리자 골프장 Par 관리 목록) 화면의 공공 데이터 업로드 기능은 이것으로 목업→pages.md→실제 API 구현→실사용 검증까지 전체 사이클 완료.
+
+## 56. 05번 골프장 목록 화면 실제 구현 (2026-07-20)
+
+- 사용자 요청: "먼저 골프장 조회 화면 목업기준으로 05-courses.html 먼저 진행해줘." — 12번/13번(관리자 Par 관리 후속)보다 05번(사용자용 골프장 목록)을 먼저 진행하기로 순서 변경. 목업/pages.md가 이미 있어 바로 실제 구현으로 진행(이전 마이페이지 때처럼 mockup-only 단계 생략).
+- 마침 652건 실데이터가 이미 DB에 있어(55번), placeholder가 아니라 실제 데이터로 화면을 만들 수 있었음.
+- **신규/수정 파일**:
+  - `app/src/components/CourseSearchList.tsx`(신규, client): 검색(이름/주소) + 필터 탭(전체/공공/민간) + "더 보기" 버튼 방식 페이지네이션(20개씩, 모바일 UX상 번호 페이지네이션보다 load-more가 자연스럽다고 판단)
+  - `app/src/app/courses/page.tsx`(placeholder → 실구현): 세션 체크 후 `GolfCourse` 전체 + `GolfCourseLoop`(홀 수 계산용) 조회, `CourseSearchList`에 전달
+  - `app/src/app/courses/[id]/page.tsx`(신규 placeholder): 05번 카드 클릭 시 404 방지, 6번 화면 자체는 이번 범위 밖
+- **실데이터 미검증 가정 3가지(문서화)**:
+  1. 주소 요약 — 전체 주소 문자열 앞 2토큰(시/도+시/군/구)만 사용. 실제 주소 포맷이 다양하면(예: 시 이름이 3토큰인 경우 등) 부정확할 수 있음
+  2. 공공/민간 분류 — `publicPrivate` 원문에 "공공" 포함 여부로만 이분화(비어있지 않은 나머지는 전부 "민간"). 실제 API 예시 응답에서 이 필드는 대부분 빈 값이고 드물게 "사립"만 관찰됨 — 실제 652건에서 값 분포가 어떤지 확인 후 교정 필요
+  3. "위치 확인 중" 표시 — `needsGeocoding` 플래그 대신 `latitude`/`longitude` null 여부로 직접 판단. 현재 좌표 변환 로직이 없어 전체 골프장이 "위치 확인 중"으로 보이는 게 정상(11번 공공 데이터 업로드가 좌표를 채우지 않기 때문)
+- **문서 갱신**: `doc/pages.md` 5번, `doc/개발리스트.md` 5번 — python 타겟 치환 + `diff` 확인, 위 3가지 가정을 TODO로 명시
+- **검증**: `npx tsc --noEmit` EXIT_CODE=0
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 05번 화면 실제 확인(검색/필터/더보기 동작, 652건 중 실제로 몇 개가 "위치 확인 중"으로 뜨는지, 공공/민간 필터가 실제로 의미 있게 나뉘는지) 후 피드백 주면 반영. 이후 6번(골프장 상세) 또는 12번/13번(관리자 Par 관리) 중 사용자가 지정하는 순서로 진행.
+
+## 57. "위치 확인 중" 해결 — TM 중부원점→WGS84 좌표 변환 추가 (2026-07-20)
+
+- 사용자 질문: "위치 확인 중 해결 방법은?" → AskUserQuestion으로 3가지 옵션(좌표계 변환만/주소 지오코딩 API/둘 다) 제시했고, 사용자가 추가로 "좌표계 변환은 어떻게 처리하는 것인가?"를 물어 proj4 기반 변환 원리(TM 중부원점 EPSG:5174, Bessel 타원체 → WGS84, `towgs84` 7-parameter 필요한 이유)를 설명 → "응 진행해." 승인.
+- **신규 파일 `app/src/lib/geo.ts`**: `convertTmToWgs84(rawX, rawY)` — `proj4` 라이브러리로 TM 중부원점(EPSG:5174) X/Y를 WGS84 위경도로 변환. 입력 파싱 실패나 변환 결과가 대한민국 대략 범위(위도 32~39.5, 경도 124~132)를 벗어나면 이상치로 보고 `null` 반환.
+- **`package.json`**: `proj4: ^2.20.9` 추가(WebSearch로 최신 버전 확인). `@types/proj4`는 처음에 같이 추가했다가, WebSearch로 "proj4가 최근 버전부터 자체 타입을 내장해서 별도 `@types` 불필요"함을 확인하고 제거.
+- **`app/src/app/api/admin/golf-courses/sync/route.ts` 수정**: 매 upsert 시점에 `rawCoordX`/`rawCoordY`로 `convertTmToWgs84()` 호출 → 성공하면 `latitude`/`longitude` 채우고 `needsGeocoding: false`, 실패하면 기존과 동일하게 `null`+`needsGeocoding: true`. **핵심 포인트**: sync는 매번 전체 골프장을 다시 조회해 `update`하므로, 관리자가 "업로드" 버튼을 한 번 더 누르면 이미 저장된 652건에도 이 변환이 소급 적용됨 — 별도 백필 스크립트 불필요.
+- **문서 갱신**: `doc/admin-golfcourse-sync.md`에 "좌표 변환" 절 신설(원리/구현 위치/한계/소급 적용 설명), `doc/pages.md` 5번의 "위치 확인 중" 설명 정정(이전엔 "좌표 변환 안 해서 전량 null"이라고 적어뒀던 게 이제 틀린 설명이 되어 교정), `doc/개발리스트.md` 5번/11번 항목에 반영. 전부 python 타겟 치환 + `diff` 확인.
+- **검증**: `npx tsc --noEmit` 결과 `Cannot find module 'proj4'` 에러 1건만 발생(예상된 것 — 샌드박스가 npm 레지스트리 접근 불가라 새 패키지 설치 검증 불가, `@auth/prisma-adapter` 때와 동일한 패턴). **사용자가 로컬에서 `npm install` 후 재검증 필요**.
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 `npm install` → 관리자 화면에서 "업로드" 버튼 재클릭(기존 652건 좌표 소급 채움) → 05번 화면에서 실제로 "위치 확인 중"이 몇 건이나 남는지 확인 후 알려주면 기록. 이후 6번(골프장 상세, 지도 표시까지 필요하면 이 좌표를 그대로 사용)이나 12번/13번(관리자 Par 관리) 중 사용자가 지정하는 순서로 진행.
