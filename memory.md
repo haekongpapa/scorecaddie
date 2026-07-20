@@ -529,3 +529,211 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 - 배포 완료: `07-round-new-step2.html` md5 `b5b3b36be0d9a4f58727d68f9839a716`.
 - `pages.md` 7-2 섹션에 "화면 이동" 불릿 신설(전체홀→라운드 상세 변경 이력 + 파라미터 명시 + 향후 draft/세션 상태 설계 필요성 메모), 주요 컴포넌트 항목도 갱신. 배포 완료(md5 `0f96e5bd82cd64d9c6b8ae29e753447f`).
 - PPT: 이번 변경은 화면 내 버튼 목적지 변경(기존에도 09와의 연계는 이미 PPT 화면설계 다이어그램에 반영돼 있던 흐름) 수준이라 추가 반영 대상 없음.
+
+## 35. 개발 리스트(구현 2단계 백로그) 작성 (2026-07-20)
+
+- 요청: "개발 리스트 작성 단계" — 설계/목업 단계 완료 후 실제 구현 착수를 위한 작업 목록 정리.
+- 현재 실 구현 상태를 코드 기준으로 재확인: `app/src/app`에는 랜딩/로그인/회원가입/인증/미들웨어만 실제 구현되어 있고, `dashboard`/`courses`/`rounds`는 "구현 예정" 문구만 있는 placeholder임을 확인. 골프장 상세·스코어 등록(7-1/7-2)·라운드 상세·마이페이지·관리자 화면 4개는 아직 실 코드 없음(목업/설계만 존재).
+- `doc/개발리스트.md` 신규 작성 — 공통 정리(README 동기화 등) → 사용자 화면(골프장/스코어) → 관리자 화면 4개 → 테스트 → 배포 순으로 20개 항목 정리, 각 항목에 근거 문서(pages.md/mockups/schema.prisma/admin-csv-upload.md) 명시. 5번 미정 사항(배포 예산, CSV 매칭 정책 등)도 하단에 재정리해 착수 전 확인 필요 항목으로 남김.
+- 작성은 이번엔 `/tmp`에서 heredoc으로 만든 뒤 `cp`로 워크스페이스에 복사, `wc -c`/`md5sum` 양쪽 일치 확인(3659 bytes) — truncation 없이 정상 배포.
+- **다음 세션 시작 시**: `doc/개발리스트.md`를 실행 우선순위로 삼아 항목 3번(골프장 목록)부터 착수 권장. 단, 항목 1(README 동기화)·2(최초 관리자 계정 지정 방법)는 코드 작업 전 먼저 정리해도 되는 가벼운 선행 작업.
+
+## 36. 개발 리스트를 화면별 기능 단위로 상세화 + 실제 구현 상태 재확인 (2026-07-20)
+
+- 요청: 35번의 요약형 개발리스트를 pages.md/mockups/PPT 기준으로 화면별 기능까지 세분화하고 각 기능의 구현 여부를 표시.
+- `app/src` 코드를 실제로 열어 재확인한 결과, 기존 memory.md 8번 항목이 "구현 완료"로 남겨뒀던 `/login`, `/signup`, 랜딩(`/`) 페이지가 실제로는 "OO 화면 (구현 예정)" 문구만 있는 placeholder임을 확인(폼/`signIn()` 연동 전혀 없음). **memory.md 이력과 실제 코드가 불일치했던 사례.**
+- 골프장 공공데이터 연동 코드(`src/lib/public-data/`, `scripts/sync-golf-courses.ts` 등, memory.md 9~10번에서 "구현 완료"로 기록됨)가 현재 프로젝트 폴더에 전혀 존재하지 않음을 확인 — `app/README.md`의 "샌드박스 임시환경에서 검증(PC에는 남지 않음)" 문구로 보아, 예전에 검증만 하고 실제 파일을 저장한 적이 없었던 것으로 추정. **처음부터 재작성 필요.**
+- `/api/signup` 라우트도 `email`/`password`/`name`만 저장하고 `thirdPartyConsent`는 저장하지 않는 버그 발견(스키마엔 필드 있음, 화면 미구현이라 지금까지 드러나지 않았음).
+- 보호 라우트 미들웨어(`src/middleware.ts`)에 `/admin` 경로가 빠져있음을 확인 — 관리자 화면 구현 시 함께 추가 필요.
+- `doc/개발리스트.md`를 화면별 기능 체크리스트(표 형식, ✅/🟡/⬜)로 전면 재작성. 0번 "기반 작업 현황" 섹션을 신규로 추가해 화면에 속하지 않는 인프라 항목(DB 스키마/인증 설정/미들웨어/공공데이터 연동/날씨 API)도 별도로 정리. 결과적으로 거의 모든 화면 기능이 ⬜(미구현)이고, 부분 구현(🟡)은 회원가입 API·NextAuth 설정·미들웨어 3건뿐임이 드러남.
+- `/tmp` heredoc → `cp` → `wc -c`/`md5sum` 검증 방식 유지(11730 bytes, 양쪽 일치).
+- **다음 세션 시작 시**: `doc/개발리스트.md`의 "착수 순서 제안"(1. 버그성 수정 → 2. 인증 3종 → 3. 골프장 데이터 → …) 순서대로 진행 권장. 착수 전 이 재확인 결과(placeholder였던 화면들, 사라진 공공데이터 연동 코드)를 사용자에게 먼저 공유했음.
+
+## 37. 버그성 수정 2건 완료 (2026-07-20)
+
+- 36번에서 발견한 버그 2건을 프로젝트 지침(PM은 서브에이전트로 기능구현 진행, 파일 쓰기는 Edit/Write 금지·bash heredoc + 검증 필수)에 따라 처리.
+- 기능구현 서브에이전트에게 정확한 목표 코드(before/after)를 지정해 위임, 완료 후 본인이 직접 `Read`로 재검증.
+- **`app/src/app/api/signup/route.ts`**: 요청 body에서 `thirdPartyConsent`를 받아 `Boolean(=== true)`로 강제 변환 후 `User.create`에 저장하도록 수정(867 bytes). 단, 회원가입 화면(3번)이 아직 이 API를 호출하지 않는 placeholder라 실제 가입 플로우 전체는 여전히 미완성 — API만 정상화됨.
+- **`app/src/middleware.ts`**: `PROTECTED_PATHS`/`matcher`에 `/admin`을 추가(593 bytes) — 로그인 안 한 사용자의 `/admin/*` 접근을 `/login`으로 리다이렉트. `role=ADMIN` 여부를 확인하는 AdminGuard는 별개 미구현 기능(관리자 화면 실제 구현 시 함께 추가 예정)이라 이번 범위에서 제외.
+- 검증: 서브에이전트가 `npx tsc --noEmit` 실행 시도 — 5개 에러 발생했으나 전부 `@/auth`·`@/lib/prisma` 경로 미해석 및 Prisma client 미생성 등 **샌드박스 환경 자체의 기존 이슈**이며 이번에 수정한 두 파일과는 무관함(신규 타입 에러 없음). 사용자 로컬(Docker+Node, prisma generate 완료 환경)에서 재확인 권장.
+- `doc/개발리스트.md` 갱신: 0번 표의 "회원가입 API"/"보호 라우트 미들웨어" 행 상태와 "착수 순서 제안" 1번 항목에 완료 반영. 이번엔 bash `sed`/python 치환 후 `diff`로 의도한 3곳만 정확히 바뀌었는지 확인(Edit 툴 미사용).
+
+### 다음 세션 시작 시
+
+- `doc/개발리스트.md` 착수 순서 2번(인증 3종 세트: 랜딩/로그인/회원가입 화면-API 연동)부터 진행 권장.
+
+## 38. 인증 3종 세트(랜딩/로그인/회원가입) 구현 완료 (2026-07-20)
+
+- `doc/개발리스트.md` 착수 순서 2번에 따라 진행. 기획(스펙 확정: mockups 01/02/03의 정확한 카피·필드 재확인) → 기능구현 서브에이전트 위임(정확한 코드 사전 확정 후 heredoc으로만 작성하도록 지시) → 본인이 직접 `Read`로 재검증하는 순서로 진행.
+- **`app/src/app/page.tsx`(랜딩)**: `auth()`로 로그인 세션 체크 후 있으면 `/dashboard` 리다이렉트(서버 컴포넌트), 히어로+4개 기능 카드(골프장 검색/스코어 기록/날씨 연동/통계 확인 — mockup 01-landing.html 카피 그대로)+로그인/회원가입 CTA. 1664 bytes.
+- **`app/src/app/login/page.tsx`**: 클라이언트 컴포넌트. `next-auth/react`의 `signIn("credentials", {redirect:false})`로 로그인 처리, 실패 시 인라인 에러, 성공 시 `/dashboard`로 `router.push`. 구글/카카오 버튼은 `signIn("google"|"kakao", {callbackUrl:"/dashboard"})`. 제출 중 로딩 상태로 버튼 비활성화. 3550 bytes.
+- **`app/src/app/signup/page.tsx`**: 클라이언트 컴포넌트. 이름/이메일/비밀번호/비밀번호확인 + 정보제공동의 체크박스(선택, mockup 03-signup.html 안내문구 그대로), 클라이언트 단에서 비밀번호 8자 미만/불일치 검증 후 `POST /api/signup` 호출(`thirdPartyConsent` 포함), 이메일 중복(409) 등 서버 에러 메시지 그대로 노출, 성공 시 `/login`으로 이동. 4762 bytes.
+- **버그 추가 발견 및 수정 — `tsconfig.json`에 `baseUrl`/`paths` 누락**: `@/auth`, `@/lib/prisma` 같은 절대경로 import가 tsc뿐 아니라 실제 `next build`/`next dev`에서도 깨질 수 있는 구성 오류였음(Next.js는 tsconfig의 paths를 그대로 module resolution에 사용). `"baseUrl": "."`, `"paths": {"@/*": ["./src/*"]}` 추가로 수정. 이전 세션(37번)에서 "샌드박스 환경 고유 문제"로 넘겼던 tsc 에러들이 사실 이 설정 누락 때문이었음 — 재확인 필요성을 보여준 사례로 기록.
+- 검증: `npx prisma generate`(샌드박스에 Prisma client 미생성 상태였음, 실행해 생성) → `npx tsc --noEmit` **0 에러**로 완전히 통과 확인. `npx next build`는 이 샌드박스의 `node_modules`가 사용자 PC(Windows)에서 마운트된 것이라 리눅스용 `@next/swc` 네이티브 바이너리가 없고, 샌드박스는 npm 레지스트리 네트워크 접근도 안 돼 다운로드도 실패함 — **풀 빌드/실행 검증은 사용자 로컬(Docker+Node)에서 필요**. ESLint도 `eslint.config.js`가 프로젝트에 없어 실행 불가(이번 범위 밖이라 손대지 않음, 후속 과제 후보로 남김).
+- `doc/개발리스트.md` 갱신: 1~3번 화면 표 전체 ✅로 갱신, 0번 표에 NextAuth 설정/회원가입 API 상태를 ✅로 올리고 tsconfig 경로 별칭 수정 항목 신규 추가. python 치환 후 `diff`로 의도한 곳만 바뀌었는지 확인(Edit 툴 미사용).
+
+### 남은 참고사항
+
+- 로그인/회원가입 화면의 **실제 동작(구글/카카오 OAuth 콜백, DB 연동 가입/로그인)은 사용자 로컬 `npm run dev` 환경에서 최종 확인 필요** — 이 샌드박스는 DB 연결도 없고 next dev 서버 자체를 못 띄움.
+- ESLint 설정 파일(`eslint.config.js`) 부재는 이번에 발견했지만 범위 밖이라 미해결 — 필요 시 다음에 추가.
+- NavBar 공통 컴포넌트는 이번 3개 화면에 포함하지 않음(랜딩/로그인/회원가입은 비로그인 진입점이라 NavBar 불필요) — 대시보드 구현 시 함께 만들 예정.
+
+### 다음 세션 시작 시
+
+- `doc/개발리스트.md` 착수 순서 3번(골프장 공공데이터 연동 재작성 → 골프장 목록/상세)부터 진행 권장.
+
+## 39. 대시보드 화면 구현 + NextAuth 세션 보강 (2026-07-20)
+
+- 배경: 사용자가 로컬 `npm run dev`로 인증 3종 세트를 확인하다 로그인 후 `/dashboard`가 404(placeholder만 있던 상태)라 대시보드부터 이어서 진행 요청.
+- **`app/src/types/next-auth.d.ts`(신규)**: NextAuth `Session`/`User`에 `id`/`role` 커스텀 필드를 추가하는 모듈 증강 파일. 대시보드가 로그인한 사용자의 `Round`를 조회하고 관리자 배너를 표시하려면 필요.
+- **`app/src/auth.ts`**: `authorize()`가 `role`도 반환하도록 수정, `jwt`/`session` 콜백을 추가해 `token`/`session.user`에 `id`·`role`이 실리도록 함(기존엔 콜백 자체가 없어서 세션에 `id`/`role`이 전혀 없었음).
+- **`app/src/app/dashboard/page.tsx`**: 인사말, 메뉴 카드 4개(골프장/스코어등록/스코어조회/마이페이지), `role=ADMIN`일 때만 보이는 관리자 배너 2개, 최근 라운드 3건(`Round`+`golfCourse`+`holeScores` 조회, 타수 합산) 또는 빈 상태 렌더링.
+- **404 방지용 최소 placeholder 4개 신규 생성**: `/rounds/new`(7-1/7-2 스코어 등록), `/profile`(마이페이지), `/admin/golf-courses`, `/admin/users` — 대시보드의 메뉴 카드/관리자 배너가 가리키는 곳인데 아직 실제 화면이 없어서 또 404가 나는 걸 막기 위함. 기존 `courses`/`rounds` placeholder와 동일한 스타일("OO 화면 (구현 예정)").
+- **tsc 검증 중 새 에러 2건 발견 및 수정**: `session` 콜백에서 `token.id`/`token.role`을 읽는 부분이 `Type 'unknown' is not assignable` 에러 발생. 원인: Auth.js의 `JWT` 인터페이스가 `Record<string, unknown>`을 확장하고 있어서, 우리가 만든 `declare module "next-auth/jwt"` 모듈 증강이 `session` 콜백의 `token` 파라미터 타입에는 완전히 병합되지 않고(원인 불명확 — 아마 `@auth/core`의 콜백 파라미터 타입이 복잡한 교차 타입이라 증강이 못 붙는 것으로 추정), 결과적으로 `token.id`/`token.role` 읽기가 인덱스 시그니처(`unknown`)로 폴백됨. **해결**: 읽는 시점에 `(token.id as string | undefined) ?? ""` 식으로 명시적 캐스팅 — 모듈 증강 병합 여부와 무관하게 항상 안전하게 동작.
+- **중요한 실수와 교훈 — 이 세션에서 Edit 툴을 실수로 사용함**: 위 tsc 에러 2건을 고치면서 습관적으로 `Edit` 툴을 사용했는데, 곧바로 `wc -c`/`cat`으로 확인해보니 **파일이 정확히 이전과 같은 1789 bytes로 그대로였고 `cat` 출력이 문장 중간(`"USER" | "ADMIN" |`)에서 잘려있었음** — memory.md에 수십 번 기록된 바로 그 truncation 버그가 실제로 재현된 것. 즉시 bash heredoc으로 전체를 다시 써서 복구(1857 bytes, md5 일치 확인). **재확인: 이 프로젝트 폴더에 대해서는 사소한 한 줄 수정이라도, PM 본인이 직접 고칠 때도 예외 없이 Edit 툴을 쓰면 안 되고 항상 heredoc + 검증이어야 함.**
+- 최종 검증: `npx tsc --noEmit` **0 에러**로 통과. 파일 7개(타입 파일 1 + auth.ts + dashboard + placeholder 4개) 전부 `Read`로 재확인 완료.
+- `doc/개발리스트.md` 갱신: 4번(대시보드) 표 전체 ✅ (단 "최근 라운드" 항목은 실제 라운드 데이터가 없어 아직 빈 상태로만 보인다는 단서 추가), 7-2/10/11/14번 섹션에 "placeholder만 생성됨, 기능은 미구현" 안내 인용구 추가. python 치환 + `diff`로 의도한 곳만 바뀌었는지 확인.
+
+### 남은 참고사항
+
+- 대시보드의 "최근 라운드" 영역은 스코어 등록 기능이 아직 없어 실제로는 항상 빈 상태로만 보임 — 정상 동작이며 버그 아님.
+- Google/Kakao OAuth 로그인은 `PrismaAdapter`가 설정되어 있지 않음(schema.prisma에 Account/Session 테이블은 있지만 `auth.ts`에서 실제 어댑터를 연결한 적이 없음) — Credentials(이메일/비밀번호) 로그인은 자체 DB 조회라 문제없지만, 소셜 로그인은 인증 자체는 될 수 있어도 DB의 `User`/`Account` 레코드와 제대로 연결되지 않을 가능성이 있음(세션의 `id`가 우리 DB cuid와 다른 값일 수 있음). 아직 실사용 전이라 이번엔 손대지 않았지만, 소셜 로그인을 실제로 테스트/사용하기 전에 반드시 짚어야 할 항목으로 남김.
+- 사용자에게 로컬에서 대시보드까지 재확인 요청 필요(특히 로그인 후 인사말에 이름이 잘 뜨는지 — 이건 `session.user.name`에 의존하는데 회원가입 시 입력한 이름이 정상 반영되는지 확인 필요).
+
+### 다음 세션 시작 시
+
+- 사용자 로컬 확인 결과에 따라 이어서 진행. 다음 정식 착수 항목은 여전히 `doc/개발리스트.md`의 골프장 공공데이터 연동(목록/상세) 또는 사용자가 우선순위를 바꾸면 그에 따름.
+
+## 40. Edge 런타임 crypto 오류 수정 (2026-07-20)
+
+- 사용자가 로컬에서 로그인 시 `Error: The edge runtime does not support Node.js 'crypto' module` 발생 보고.
+- 원인: `src/middleware.ts`가 `@/auth`(전체 `auth.ts`)를 그대로 가져오는데, `auth.ts`가 `bcryptjs`(Credentials `authorize`의 비밀번호 비교)와 `@/lib/prisma`(`@prisma/adapter-pg`, `pg` 드라이버)를 임포트함. Next.js 미들웨어는 기본적으로 Edge 런타임에서 실행되는데 이 두 패키지는 Node.js 전용 `crypto` 등을 사용해 Edge에 번들 자체가 안 됨. 39번 항목에서 다뤘던 세션 콜백 타입 이슈와는 별개로, **이 프로젝트가 처음부터 갖고 있던 아키텍처 결함**(미들웨어와 풀 인증 설정을 분리하지 않음)이었고, 지금까지는 로그인 화면 자체가 placeholder라 실제로 로그인을 시도한 적이 없어서 드러나지 않았던 것.
+- **해결 (Auth.js v5 공식 "config 분리" 패턴 적용)**:
+  - **`app/src/auth.config.ts`(신규)**: Edge에 안전한 최소 설정. Google/Kakao provider + `pages`/`session`/`callbacks`(jwt·session — 순수 필드 복사라 Edge에도 안전)만 포함, **Credentials provider와 Prisma/bcrypt는 여기 없음**.
+  - **`app/src/auth.ts`(전체 재작성)**: `authConfig`를 스프레드해 확장하고, `providers`에 Credentials(기존 authorize 로직 그대로, prisma+bcrypt 사용)를 추가로 얹음. API 라우트/서버 컴포넌트 등 Node.js 런타임에서만 사용.
+  - **`app/src/middleware.ts`(재작성)**: `@/auth` 대신 `NextAuth(authConfig)`로 별도의 가벼운 `auth()` 인스턴스를 그 자리에서 새로 만들어 사용 — Credentials/Prisma/bcrypt가 전혀 번들되지 않음. `PROTECTED_PATHS`/`matcher` 등 기존 로직은 그대로 유지.
+- 세 파일 모두 처음부터 `mcp__workspace__bash` heredoc으로 작성(37번 항목에서 겪은 Edit 툴 truncation 재발 방지를 위해 이번엔 처음부터 Edit 툴을 시도조차 하지 않음), 작성 직후 `wc -c`/`md5sum`로 로컬 임시본과 대조.
+- `npx tsc --noEmit` **0 에러** 확인, `Read`로 세 파일 전체 재확인 완료.
+- **한계**: 이 샌드박스는 리눅스용 `@next/swc` 바이너리가 없고 npm 레지스트리 접근도 안 돼 `next dev`/`next build`를 직접 실행해 런타임으로 재현·검증할 수 없음. 이번 수정은 Auth.js 공식 문서의 표준 해법이고 에러 메시지·원인이 정확히 일치해 타입 수준 검증(tsc)까지는 마쳤지만, **실제 로그인 성공 여부는 사용자 로컬에서 재확인 필요**(미들웨어 변경은 dev 서버 재시작이 필요할 수 있음).
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 `npm run dev` 재시작 후 로그인 재시도 결과를 받아서 확인. 성공하면 `doc/개발리스트.md`의 "골프장 공공데이터 연동" 등 다음 항목으로 진행.
+
+## 41. 대시보드 목업 디자인 반영 + 공통 컴포넌트 신설 (2026-07-20)
+
+- 사용자가 로그인 성공 후 대시보드가 `doc/mockups/04-dashboard.html`과 시각적으로 다르다고 지적 → 언제 맞출지 물어봤고, "지금 바로(추천)" 응답을 받아 진행.
+- 목업(`doc/mockups/_shared.css`) 대비 실제 구현 차이: 메뉴 카드에 이모지 아이콘 없음, 하단 고정 네비게이션 없음, 관리자 배너/최근 라운드가 카드형이 아니라 목업은 "리스트 아이템"(제목+부제 좌측, 값 우측, `card-bg` 배경) 스타일.
+- **`app/tailwind.config.ts`**: 목업 CSS 변수(`--card-bg`, `--card-bg2`, `--text-muted`, `--text-dark`, `--border`)를 Tailwind 커스텀 색상으로 추가(`card-bg`/`card-bg2`/`muted`/`ink`/`line`) — 앞으로 모든 화면에서 재사용.
+- **`app/src/components/NavBar.tsx`(신규, 공통 컴포넌트)**: 하단 고정 네비게이션(홈/골프장/스코어/마이, 이모지 아이콘), `usePathname()`으로 현재 경로에 맞는 active 스타일. `pages.md` 공통 컴포넌트 "NavBar"에 해당.
+- **`app/src/components/RoundListItem.tsx`(신규, 공통 컴포넌트)**: 목업의 `.list-item` 스타일(제목/부제 좌측, 값 우측)을 그대로 컴포넌트화. `pages.md`가 "RoundListItem: 4, 8번 화면에서 재사용"이라고 명시한 컴포넌트라 8번(스코어 조회) 구현 시에도 그대로 재사용 가능.
+- **`app/src/app/dashboard/page.tsx` 재작성**: 메뉴 카드 4개에 목업과 동일한 아이콘(⛳✏️📋👤), 관리자 배너 2개를 점선 테두리+`card-bg2` 배경+ADMIN 뱃지 스타일로, 최근 라운드를 `RoundListItem`으로 교체, 하단에 `NavBar` 추가(겹침 방지로 `pb-24` 여백).
+- **`courses/page.tsx`, `rounds/page.tsx`, `profile/page.tsx`(기존 placeholder)**: 동일하게 `NavBar` + 일관된 레이아웃(`max-w-md p-5 pb-24`)으로 갱신 — 대시보드에서 다른 탭으로 이동해도 하단 네비게이션이 유지되도록.
+- **`rounds/[id]/page.tsx`(신규 placeholder)**: 대시보드 최근 라운드 항목이 링크하는 라운드 상세 화면이 아직 없어서 또 404 나는 걸 방지(현재는 라운드 데이터가 없어 실제로 클릭될 일은 없지만 안전하게 추가).
+- 판단: `rounds/new`(스코어 등록 플로우)와 `/admin/*` 화면에는 NavBar를 넣지 않음 — 목업상 이런 "몰입형 플로우/관리자 영역" 화면은 하단 탭 없이 별도 상단 바(뒤로가기 등)를 쓰는 패턴이라 하단 탭을 유지하는 게 맞지 않다고 판단(11~14번, 7-1/7-2 실제 구현 시 재검토 가능).
+- 검증: `npx tsc --noEmit` 0 에러, 8개 파일 전부 `Read`/`md5sum`으로 재확인. 이번엔 처음부터 전부 bash heredoc으로만 작성(Edit 툴 사용 안 함).
+- `doc/개발리스트.md` 4번(대시보드) 표에 디자인 반영 완료 행 추가.
+
+### 남은 참고사항
+
+- 여전히 이 샌드박스에서는 `next dev`를 못 띄워서 실제 렌더링 결과를 픽셀 단위로 확인할 수는 없음 — 사용자가 로컬에서 보고 색상/간격이 기대와 다르면 추가 조정 필요.
+- `courses`/`rounds`/`profile`은 아직 내용 자체는 placeholder라 화면 하단 네비게이션만 실제처럼 보이고 본문은 계속 "구현 예정" 상태.
+
+### 다음 세션 시작 시
+
+- 사용자 로컬 확인 후 다음 항목(골프장 공공데이터 연동 등)으로 진행.
+
+## 42. 상단 타이틀 바(TopBar) 추가 (2026-07-20)
+
+- 41번 이어서, 사용자가 목업처럼 페이지 상단에 타이틀 표시가 있으면 좋겠다고 제안 → 목업 재확인 결과 대시보드/골프장/스코어조회/마이페이지 전부 topbar가 있었는데(대시보드는 좌측 빈칸+제목+우측 👤, 나머지는 "‹ 뒤로"+제목+빈칸) 41번 작업 때 빠뜨렸던 것으로 확인, 동의하고 바로 반영.
+- **`app/src/components/TopBar.tsx`(신규, 공통 컴포넌트)**: `title`/`backHref`(선택, 있으면 좌측에 "‹ 뒤로" 링크)/`rightHref`+`rightIcon`(선택, 있으면 우측에 아이콘 링크) props. 좌우 슬롯을 `w-8`로 고정해 제목이 항상 중앙 정렬되도록 구성.
+- **`dashboard/page.tsx`**: `<TopBar title="대시보드" rightHref="/profile" rightIcon="👤" />` 추가(뒤로가기 없음, 우측에 프로필 아이콘).
+- **`courses/page.tsx`, `rounds/page.tsx`, `profile/page.tsx`**: 각각 `<TopBar title="골프장|스코어 조회|마이페이지" backHref="/dashboard" />`로 교체, 기존에 있던 중복 `<h1>` 제거.
+- 로그인/회원가입은 이미 별도 카드형 레이아웃(뒤로가기 없이 자체 `<h1>`)이라 이번 범위에서 제외 — 필요해지면 별도 논의.
+- 검증: `npx tsc --noEmit` 0 에러, 5개 파일 전부 `Read`+`md5sum` 재확인. 전부 bash heredoc으로만 작성.
+- `doc/개발리스트.md` 4번(대시보드) 표에 TopBar 반영 행 추가.
+
+### 다음 세션 시작 시
+
+- 사용자 로컬 확인 후 다음 항목(골프장 공공데이터 연동 등)으로 진행.
+
+## 43. 마이페이지(10번 화면) 구현 (2026-07-20)
+
+- 사용자가 순서를 바꿔 마이페이지를 먼저 진행해달라고 요청(원래 다음 항목은 골프장 공공데이터 연동이었음).
+- `doc/mockups/10-profile.html`을 기준으로 구현(다른 화면들과 동일하게 mockup 시각 디자인 우선 기준):
+  - **아바타+이름+이메일**: 목업엔 가입일 표시가 없어(pages.md 텍스트는 "이름/이메일/가입일"이라 적혀 있었지만 실제 mockup에는 가입일이 없음) mockup 기준으로 가입일 생략. `doc/개발리스트.md`에 이 불일치를 명시해둠.
+  - **통계 카드 3개**: pages.md 텍스트는 "총 라운드 수/평균 타수/최근 라운드"라 적혀 있지만, mockup은 세 번째 칸이 "베스트 스코어"임 — 역시 mockup을 기준으로 삼음(총 라운드/평균 타수/베스트 스코어). `Round`+`HoleScore`를 조회해 라운드별 총타수를 계산 후 평균/최솟값 산출(홀스코어가 없는 빈 라운드는 집계에서 제외). 현재는 스코어 등록 기능이 없어 항상 0/-/- 로 표시됨(정상).
+  - **`app/src/components/ConsentToggle.tsx`(신규)**: `thirdPartyConsent` on/off 토글 스위치(목업의 커스텀 슬라이더를 Tailwind `peer` 패턴으로 재현, 38×22px 트랙/16px 썸), 상태 텍스트("동의함"/"동의 안 함"/"저장 중...") 함께 표시, 변경 시 `PATCH /api/me` 호출, 실패하면 이전 값으로 롤백.
+  - **`app/src/app/api/me/route.ts`(신규)**: 로그인 세션 확인 후 `thirdPartyConsent`만 업데이트하는 PATCH 핸들러.
+  - **`app/src/components/LogoutListItem.tsx`(신규)**: `next-auth/react`의 `signOut({ callbackUrl: "/" })` 호출하는 로그아웃 리스트 아이템(목업의 강조색 `#D85A30` 그대로 사용).
+  - **비밀번호 변경/알림 설정**: mockup은 `href="#"` 무효 링크였지만, 이 세션에서 계속 지켜온 "미구현은 명확히 표시" 원칙에 따라 dead link 대신 `opacity-60` + "준비 중" 라벨로 의도적으로 변경(디자인 판단, memory에 기록). 비밀번호 변경은 `passwordHash` 존재 여부로 노출 분기(소셜 전용 계정은 숨김)는 실제로 구현했지만, 클릭했을 때의 실제 변경 플로우 자체는 pages.md에 별도 화면으로 정의돼 있지 않아 범위 밖으로 남김.
+- `app/src/app/profile/page.tsx` 전체 재작성(서버 컴포넌트: 세션→유저 조회→통계 집계→렌더링, 인터랙션은 위 클라이언트 컴포넌트에 위임).
+- 검증: `npx tsc --noEmit` 0 에러. 4개 파일(API 라우트, ConsentToggle, LogoutListItem, profile/page.tsx) 전부 `Read`+`md5sum` 재확인. 전부 bash heredoc으로만 작성.
+- `doc/개발리스트.md` 10번 섹션 표 전체 갱신(비밀번호 변경만 🟡, 나머지 전부 ✅), 41번 항목에서 남겨뒀던 "placeholder만 생성됨" 안내문을 "구현 완료"로 교체.
+
+### 다음 세션 시작 시
+
+- 사용자 로컬 확인 후, 원래 다음 순서였던 골프장 공공데이터 연동이나 다른 우선순위로 진행.
+
+## 44. 마이페이지 목업 수정 — 가입일 표시 + 비밀번호 변경 화면 신설 (2026-07-20, 목업만 반영)
+
+- 요청: "mockup까지만 반영" — `doc/pages.md`나 실제 앱 코드(`app/src`)는 건드리지 않고 `doc/mockups/`만 갱신.
+- **`doc/mockups/10-profile.html`**: 아바타 옆 이름/이메일 아래에 "2026.07.14 가입" 가입일 텍스트 추가(43번 항목에서 mockup에 없어 구현 안 했던 부분). "비밀번호 변경" 리스트 항목의 `href`를 `#`(무효 링크)에서 신규 `10-1-change-password.html`로 연결.
+- **`doc/mockups/10-1-change-password.html`(신규)**: 마이페이지 하위 화면(07-1/07-2와 같은 번호 체계로 "10-1"). 현재 비밀번호/새 비밀번호/새 비밀번호 확인 3개 입력 필드 + 에러 상태 예시("현재 비밀번호가 올바르지 않습니다") + 규칙 안내 문구("영문, 숫자 포함 8자 이상") + "변경하기" 버튼. 하단 네비게이션 바는 넣지 않음(06/09번 등 기존 "상세/드릴인" 화면들이 전부 네비바 없이 뒤로가기만 쓰는 패턴을 따름).
+- **`doc/mockups/index.html`**: "10-1" 카드 추가(07-1/07-2와 동일한 서브넘버링 방식). "총 14개 화면" 문구는 07-1/07-2 때와 마찬가지로 10번 화면의 하위 화면 취급이라 변경하지 않음.
+- 전부 `mcp__workspace__bash` heredoc으로 작성, 작성 직후 `wc -c`+`md5sum`으로 로컬 임시본과 대조, `Read`로 최종 내용 재확인.
+- **의도적으로 하지 않은 것**: `doc/pages.md`(10번 섹션에 가입일/비밀번호 변경 화면 스펙 추가 필요), 실제 구현(`app/src/app/profile/page.tsx`에 가입일 표시 추가, `app/src/app/profile/change-password/page.tsx` 신설, 비밀번호 변경 API) — 전부 사용자가 목업을 확인한 뒤 진행 예정.
+
+### 다음 세션 시작 시
+
+- 사용자가 이 두 목업(10-profile.html 가입일, 10-1-change-password.html)을 확인한 뒤 "pages.md에 반영" 또는 "바로 구현"을 요청하면 그때 `doc/pages.md`(10번 섹션 갱신 + "10-1" 하위 화면 스펙 신설)와 `app/src`(가입일 표시, 비밀번호 변경 화면+API) 순서로 진행.
+
+## 45. pages.md 반영 + 비밀번호 변경 실제 구현 (2026-07-20)
+
+- 44번에서 목업만 먼저 반영해뒀던 것을 사용자 확인 후 pages.md와 실제 코드로 확장.
+- **`doc/pages.md` 10번 섹션 갱신**: 레이아웃/데이터의존성/상태 문구를 실제 mockup·구현과 맞춤(3번째 통계 "최근 라운드"→"베스트 스코어"로 정정, "가입일"은 이미 텍스트엔 있었고 이번에 mockup·구현이 따라잡음). "화면 이동" 불릿 신규 추가. **`### 10-1. 비밀번호 변경` 섹션 신규 작성**(7-1/7-2와 동일한 하위 화면 번호 체계) — 목적/경로/목업/레이아웃/컴포넌트/데이터의존성/상태/화면이동 전부 명시. python 치환 후 `diff`로 의도한 블록만 바뀌었는지 확인.
+- **`app/src/app/api/me/password/route.ts`(신규)**: `PATCH` — 세션 확인 → 새 비밀번호 8자 이상 검증 → 대상 유저의 `passwordHash` 존재 확인(없으면 403, 소셜 전용 계정 방어) → 현재 비밀번호를 `bcrypt.compare`로 검증(틀리면 400) → 새 비밀번호를 `bcrypt.hash`로 저장.
+- **`app/src/app/profile/change-password/page.tsx`(신규)**: 클라이언트 컴포넌트, `TopBar`(뒤로가기→`/profile`)만 쓰고 `NavBar`는 안 씀(06/09번 등 드릴인 화면과 동일 패턴 유지). 현재/새/새 확인 3개 입력, 클라이언트 단에서 8자 미만·불일치 우선 검증 후 API 호출, 서버 에러 메시지 그대로 노출, 성공 시 `/profile`로 이동.
+- **`app/src/app/profile/page.tsx` 갱신**: `user.createdAt`을 "YYYY.MM.DD 가입" 형식으로 아바타 영역에 추가, "비밀번호 변경" 항목을 기존 `opacity-60`+"준비 중" 비활성 표시에서 `Link href="/profile/change-password"`로 교체(소셜 전용 계정 숨김 조건은 그대로 유지).
+- 검증: `npx tsc --noEmit` 0 에러, 3개 파일 전부 `Read`+`md5sum` 재확인. 전부 bash heredoc으로만 작성.
+- `doc/개발리스트.md` 10번 표 갱신 — 비밀번호 변경 항목 🟡→✅, `PATCH /api/me/password` API 행 신규 추가.
+- 이로써 10번(마이페이지) + 10-1(비밀번호 변경)의 목업·pages.md·실제 구현이 전부 동기화됨.
+
+### 다음 세션 시작 시
+
+- 사용자 로컬 확인(특히 비밀번호 변경 실제 동작 — 현재 비밀번호 틀렸을 때 에러, 정상 변경 후 재로그인 필요 여부 등) 후 다음 항목(골프장 공공데이터 연동 등)으로 진행.
+
+## 46. 구글/카카오 OAuth 로그인 안 됨 — 원인 진단 + PrismaAdapter 연결 (2026-07-20)
+
+- 사용자 질문: "구글과 카카오 인증으로 로그인 안되는데 필요한 것이 있나?"
+- **원인 1 (외부, 사용자 조치 필요)**: `.env`의 `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`KAKAO_CLIENT_ID`/`KAKAO_CLIENT_SECRET`가 전부 빈 문자열(`""`)임을 `python3`로 직접 확인. 즉 구글 클라우드 콘솔/카카오 디벨로퍼스에 앱 자체를 등록한 적이 없는 상태 — 지금 당장은 이것만으로도 로그인이 안 되는 게 정상.
+- **원인 2 (코드, 이번에 발견·수정)**: `auth.ts`에 `adapter`가 전혀 연결돼 있지 않았음(`prisma/schema.prisma`엔 Account/Session/VerificationToken이 "NextAuth Prisma Adapter 사용을 위해" 포함돼 있다고 주석까지 있었는데 실제로 한 번도 연결된 적 없었음 — 8번 항목부터 이어진 미완성 상태였음). 어댑터 없이는 구글/카카오로 "인증"까지는 될 수 있어도, 세션의 `user.id`가 우리 `User` 테이블의 cuid와 무관한 값이 되어 대시보드·마이페이지의 `prisma.user.findUnique({ where: { id: session.user.id }})` 같은 조회가 전부 실패/빈 값이 됨.
+- **조치**:
+  - `app/package.json`에 `@auth/prisma-adapter": "^2.11.2"` 의존성 추가(WebSearch로 최신 버전 확인, 2.11.2가 3개월 전 배포된 최신 버전).
+  - `app/src/auth.ts`에 `import { PrismaAdapter } from "@auth/prisma-adapter"` + `adapter: PrismaAdapter(prisma)` 추가. `session.strategy: "jwt"`는 `auth.config.ts`에서 그대로 유지되므로 세션 저장 방식 자체는 안 바뀜(어댑터는 OAuth 계정 연결/User 생성 용도로만 쓰임) — Credentials provider는 어댑터와 무관하게 계속 자체 로직으로 동작(Auth.js가 Credentials는 항상 어댑터를 거치지 않도록 설계돼 있어 충돌 없음).
+- **검증 한계(중요)**: `@auth/prisma-adapter`가 이 샌드박스의 `node_modules`엔 없고, 샌드박스는 npm 레지스트리 접근이 안 돼(이전 40/41번 항목에서도 확인된 제약) 설치·검증이 불가능함. `npx tsc --noEmit` 결과 **`Cannot find module '@auth/prisma-adapter'` 에러 1건만 발생**(다른 신규 에러 없음 — 이는 패키지 미설치 때문이지 코드 오류가 아님). **사용자가 로컬에서 `npm install` 실행 후 `npx tsc --noEmit`으로 재검증 필요** — 이번 건은 이 프로젝트에서 처음으로 "샌드박스에서 완전히 검증 못 하고 넘긴" 코드 변경임을 명확히 기록.
+- **추가로 남는 리스크(아직 미해결, 사용자에게 안내함)**:
+  - Prisma 7이 매우 최신 버전이라 `@auth/prisma-adapter`와의 호환성이 100% 보장되진 않음(WebSearch 결과, 비슷한 어댑터들이 Prisma 6/7 전환기에 버전 호환 이슈를 겪은 사례들 확인됨 — 예: better-auth 진영에서도 Prisma 7 전환 이슈 보고). 로컬에서 설치 후 문제가 있으면 알려달라고 안내.
+  - 카카오 개발자 앱은 기본적으로(비즈 앱 전환 없이는) 이메일 동의항목이 제한적일 수 있음 — 우리 `User.email`은 필수+unique 필드라, 카카오 로그인 시 이메일이 아예 안 넘어오면 어댑터의 `createUser`가 실패할 수 있음. 카카오 개발자 콘솔에서 "카카오 로그인 > 동의항목 > 카카오계정(이메일)"이 활성화돼 있는지 사용자가 직접 확인 필요.
+  - 이메일/비밀번호로 먼저 가입한 계정과 동일한 이메일로 나중에 구글/카카오 로그인을 시도하면 Auth.js 기본 정책상 자동으로 연결되지 않고 "OAuthAccountNotLinked" 에러가 날 수 있음(계정 연결 커스텀 로직 미구현, 후속 과제로 남김).
+- 사용자에게 안내한 외부 설정 절차:
+  - **Google**: Google Cloud Console → OAuth 동의 화면 구성 → OAuth 2.0 클라이언트 ID(웹 애플리케이션) 생성 → 승인된 리디렉션 URI `http://localhost:3000/api/auth/callback/google` 등록 → 발급된 Client ID/Secret을 `.env`에 입력.
+  - **Kakao**: Kakao Developers → 앱 생성 → "카카오 로그인" 활성화 → Redirect URI `http://localhost:3000/api/auth/callback/kakao` 등록 → REST API 키(Client ID)와 보안 탭에서 발급하는 Client Secret을 `.env`에 입력 → 동의항목에서 이메일 활성화 확인.
+
+### 다음 세션 시작 시
+
+- 사용자가 `npm install` 후 tsc 결과와 실제 구글/카카오 로그인 시도 결과(에러 메시지 포함)를 알려주면 그에 맞춰 후속 조치(어댑터 버전 조정, 계정 연결 로직 추가 등) 진행.
+
+## 47. 구글 OAuth 로그인 성공 확인 (2026-07-20)
+
+- 사용자가 Google Cloud Console에서 발급한 실제 Client ID/Secret을 전달 → `.env`의 `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`에 반영(python 스크립트로 해당 두 줄만 정확히 교체, 값은 이후 어떤 로그/응답에도 다시 노출하지 않음).
+- 사용자가 로컬에서 `npm install`(`@auth/prisma-adapter` 설치) → 개발 서버 재시작 → "구글로 계속하기" 클릭 → **실제 로그인 성공 확인**. 46번 항목에서 추가한 `PrismaAdapter` 연결이 정상 동작함을 실사용으로 확인한 것.
+- 카카오는 사용자가 직접 Kakao Developers에서 앱 등록 및 Client ID/Secret 발급, 테스트까지 진행하기로 함 — 46번에서 남겨둔 "카카오 이메일 동의항목 제한 가능성" 리스크는 사용자가 테스트하면서 직접 확인할 예정.
+- `doc/개발리스트.md` "구글/카카오 OAuth 실제 로그인" 행을 "구글 OAuth"(✅ 완료)와 "카카오 OAuth"(⬜ 사용자 진행 예정) 두 행으로 분리.
+- 이 시점까지의 세션 작업(37~47번 항목: 버그성 수정 2건, 인증 3종 세트, 대시보드, Edge 런타임 crypto 수정, 대시보드/마이페이지 목업 디자인 반영, 마이페이지+비밀번호 변경 구현, PrismaAdapter 연결, 구글 로그인 확인)을 git에 커밋 예정(48번 항목 참고).
+
+## 48. 세션 작업 git 커밋 (2026-07-20)
+
+- 사용자 요청: "지금까지 진행한 내용 memory.md와 필요한 파일 업데이트하고 git에 커밋까지 진행해줘."
+- `.gitignore`에 `app/.env`가 이미 제외되어 있음을 재확인(민감정보 커밋 방지) 후 `git add`/`git commit` 진행.
+- **push는 하지 않음** — root README.md에 명시된 기존 방침대로, 실제 GitHub push는 사용자가 VS Code의 Git Credential Manager(OAuth)로 직접 수행(이 세션엔 GitHub 인증 수단이 없음). 커밋만 로컬 저장소에 완료.
