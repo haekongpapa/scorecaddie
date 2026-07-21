@@ -1044,3 +1044,22 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 사용자가 로컬에서 14번 화면 최종 확인(단일선택, 역할별 버튼 노출, 관리자만 보기, 본인 계정 해제 버튼 비활성화 전부). 이후 남은 미구현 화면은 사실상 7-1/7-2(스코어 등록 2-Step)뿐 — 1~6, 10~14번 전부 실제 구현 완료 상태.
+
+## 71. 7-1/7-2 스코어 등록 2-Step 실제 구현 (2026-07-21)
+
+- 사용자 요청: "다음 화면 진행해줘." — 마지막 남은 미구현 화면인 7-1(코스 선택)/7-2(스코어카드 입력)를 진행.
+- **설계 변경(가장 중요)**: 목업은 Step1→Step2 이동, 수정모드 진입 모두 URL 쿼리 파라미터(`course`, `scores=` 등)와 클라이언트 상태만으로 시연했다. pages.md에 이미 "실제 구현 시 서버 임시저장/세션 설계가 필요하다"는 미해결 메모가 있었는데, 이번에 다음과 같이 확정: **Step2에서 첫 홀을 저장하는 시점에 `Round`를 DB에 생성**(빈 라운드가 남는 걸 막기 위해 Step1이 아니라 지연 생성)하고, 이후 각 홀 저장은 `HoleScore`를 upsert. 라운드 생성 직후 `router.replace`로 URL을 `?step=2&edit=<roundId>`로 바꿔 새로고침해도 중복 생성되지 않게 함. 수정모드는 `edit=<roundId>`로 서버 컴포넌트가 DB에서 전체 필드를 그대로 복원(목업의 `scores=` 방식과 달리 `teeShotResult`/`pinDistanceType`/`memo` 등 필드 유실 없음).
+- **신규 파일**:
+  - `app/src/app/api/rounds/route.ts`(POST): `golfCourseId`/`playedAt`/`holesPlayed`/`frontLoopId`/`backLoopId` 받아 로그인 사용자 소유 `Round` 생성, `roundId` 반환.
+  - `app/src/app/api/rounds/[id]/holes/[holeNumber]/route.ts`(PUT): 라운드 소유자 검증 후 `HoleScore`를 `roundId_holeNumber` unique 기준 upsert(4분할 패널 전 필드 + `strokes = onGreenStrokes + puttStrokes` 서버 계산). par 3~6, teeShotResult/pinDistanceType enum, 메모 100자 등 유효성 검증 포함.
+  - `app/src/components/RoundStep1.tsx`(클라이언트): 골프장 select, 9H/18H 세그먼트, 전반/후반 루프 select(같은 루프 중복 선택 방지), 루프 미등록 시 안내문, 날짜 피커(기본값 오늘), 날씨 카드는 기상청 API 미착수라 "날씨 연동 준비 중" 정적 문구만 표시. "스코어 카드" 버튼이 `/rounds/new?step=2&...`로 이동.
+  - `app/src/components/RoundStep2.tsx`(클라이언트): 전반/후반 스코어카드 표(홀 탭 이동), PAR 3/4/5/6 버튼, 4분할 패널(티샷결과 자동가산/되돌리기 로직 포함), 홀메모, 저장 시 위 API 호출 후 다음 홀 자동 이동, 이전/다음/초기화 네비게이션, "라운드 상세" 버튼(roundId 생기기 전엔 비활성).
+  - `app/src/app/rounds/new/page.tsx`(placeholder → 실구현, 서버 컴포넌트): `step` 쿼리로 Step1/Step2 분기. Step2는 `edit` 유무로 "신규(Step1 파라미터로 초기 Par 구성)" / "수정(DB에서 Round+HoleScore 전체 조회해 복원)" 분기.
+- **목업 대비 파라미터명 변경**: `course`(이름)→`courseId`(id), `holes`→`holesPlayed`, `frontLoop`/`backLoop`→`frontLoopId`/`backLoopId`. 06번 골프장 상세 "이 골프장에서 스코어 등록" 버튼이 이미 `?courseId=`로 링크해뒀던 것과 일치시킴.
+- **범위에서 제외한 것**: 날씨 API 연동(기존에도 "미착수"로 문서화돼 있던 부분, 이번에도 정적 placeholder만). 9번(라운드 상세) 화면에 "수정" 진입 버튼 연결은 9번 자체가 아직 placeholder라 보류 — `edit=<roundId>` 파라미터 처리 자체는 이미 구현해뒀으므로 9번 구현 시 버튼만 연결하면 됨.
+- **문서 갱신**: `doc/pages.md` 7번 섹션에 "실제 구현 설계 변경" 문단 추가 + 파라미터명 갱신, `doc/개발리스트.md` 7-1/7-2 표 전체 ⬜→✅(날씨 스냅샷만 ⬜ 유지).
+- **검증**: `npx tsc --noEmit` EXIT_CODE=0. 로컬 DB 접근 불가로 실제 저장/조회 동작(특히 홀 저장 후 다음 홀 이동, 수정모드 복원)은 미검증.
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 7-1/7-2 화면 실제 동작 확인: 골프장 선택→9H/18H→루프 선택→날짜→스코어 카드 이동, 홀 저장 시 Round/HoleScore가 실제 DB에 쌓이는지, "라운드 상세" 버튼이 실제 roundId로 이동하는지, `?step=2&edit=<roundId>`로 직접 접속했을 때 기존 입력값이 그대로 복원되는지. 문제없이 확인되면 1~14번 전 화면이 실제 구현 완료 상태 — 다음으로는 8번(스코어 조회 목록)/9번(라운드 상세, 현재 placeholder) 중 남은 화면이 있는지 재점검하거나 기상청 API 연동 등 "미착수" 항목 착수 여부를 사용자에게 확인.

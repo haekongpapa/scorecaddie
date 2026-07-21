@@ -75,7 +75,8 @@ DB 스키마 근거: `prisma/schema.prisma` (User, GolfCourse, GolfCourseLoop, G
 - **목적**: 골프장·코스·일자 선택(Step1) 후 홀별 상세 스코어 입력(Step2)
 - **경로**: `/rounds/new` (내부적으로 Step1/Step2 두 화면, 선택값은 쿼리 파라미터로 전달)
 - **목업**: `doc/mockups/07-round-new-step1.html`, `doc/mockups/07-round-new-step2.html` (사용자 제공 참조 앱 "Even Par" 스타일 반영. 구버전 단일화면 목업 `07-round-new.html`은 비교용으로 보존)
-- **진입 경로**: (1) 4번 대시보드 "스코어 등록" 카드 → Step1 파라미터 없이 진입, (2) 6번 골프장 상세 "이 골프장에서 스코어 등록" 버튼 → Step1에 `?course=` 파라미터로 골프장 미리 선택, (3) 9번 라운드 상세 "수정" 버튼 → **Step2로 직접** 기존 라운드 데이터를 파라미터로 채워 진입(아래 7-2 참고)
+- **진입 경로**: (1) 4번 대시보드 "스코어 등록" 카드 → Step1 파라미터 없이 진입, (2) 6번 골프장 상세 "이 골프장에서 스코어 등록" 버튼 → Step1에 `?courseId=` 파라미터로 골프장 미리 선택, (3) 9번 라운드 상세 "수정" 버튼(9번 미구현으로 아직 실제 진입 버튼은 없음) → **Step2로 직접** `?step=2&edit=<roundId>`로 기존 라운드 데이터를 서버에서 조회해 채워 진입(아래 7-2 참고)
+- **실제 구현(2026-07-21) 설계 변경**: 목업은 Step1→Step2 이동 시 골프장명 문자열과 홀별 타수를 URL 쿼리로만 주고받아(`course=`, `scores=` 등) 클라이언트 상태만으로 시연했지만, 실제 구현은 (1) `courseId`를 항상 실제 `GolfCourse.id`로 사용하고 (2) Step2에서 **첫 홀을 저장하는 시점에 `Round`를 DB에 생성**하고 이후 각 홀 저장마다 `HoleScore`를 upsert하는 방식으로 대체했다. `Round` 생성 직후 URL을 `router.replace`로 `?step=2&edit=<roundId>`로 바꿔 새로고침 시 중복 생성을 막고, "라운드 상세" 버튼은 항상 실제 `roundId`로 연결된다(첫 홀 저장 전에는 비활성). `/rounds/new` 라우트 하나가 `step` 쿼리 파라미터로 Step1/Step2를 분기하는 서버 컴포넌트다.
 
 ### 7-1. Step1 — 코스 선택
 
@@ -83,8 +84,8 @@ DB 스키마 근거: `prisma/schema.prisma` (User, GolfCourse, GolfCourseLoop, G
 - **주요 컴포넌트**: 골프장 콤보박스, 9H/18H 세그먼트 버튼, 전반/후반 코스 선택(9H면 후반 숨김), 날짜 피커, 날씨 카드(자동)
 - **데이터 의존성**: `GolfCourse`(선택용), `GolfCourseLoop`(선택된 골프장의 루프 목록 — 전반/후반 select 옵션으로 표시, `sortOrder` 순), 날씨 API(좌표 기반 스냅샷 미리보기)
 - **상태**: 9H 선택 시 후반 코스 선택란 숨김, 선택한 골프장에 루프가 1개도 등록되어 있지 않으면 코스 선택란 대신 "코스 정보 없음(관리자 등록 필요)" 안내 후 루프 선택 없이 진행 가능(→ `Round.frontLoopId/backLoopId`는 null로 저장)
-- **진입 파라미터**: `?course=<골프장명>` — 6번 화면에서 넘어온 경우 골프장 select를 미리 선택(목업에서는 골프장명 문자열, 실제 구현 시 `golfCourseId`)
-- **다음 화면 호출**: "스코어 카드" 버튼 클릭 시 **7-2(Step2)**를 `?holes=&course=&date=&frontLoop=&backLoop=` 파라미터와 함께 호출(`frontLoop`/`backLoop`는 선택된 `GolfCourseLoop.id`)
+- **진입 파라미터**: `?courseId=<GolfCourse.id>` — 6번 화면에서 넘어온 경우 골프장 select를 미리 선택
+- **다음 화면 호출**: "스코어 카드" 버튼 클릭 시 **7-2(Step2)**를 `?step=2&courseId=&holesPlayed=&date=&frontLoopId=&backLoopId=` 파라미터와 함께 호출(`frontLoopId`/`backLoopId`는 선택된 `GolfCourseLoop.id`)
 
 ### 7-2. Step2 — 스코어카드 입력
 
@@ -97,10 +98,10 @@ DB 스키마 근거: `prisma/schema.prisma` (User, GolfCourse, GolfCourseLoop, G
 - **주요 컴포넌트**: 스코어카드 표 2개(전반/후반, 9H면 후반 숨김), Par 선택 버튼, 4분할 입력 패널(위), 홀메모 입력(100자 제한), 홀 저장 버튼(누르면 다음 홀로 자동 이동), "라운드 상세" 링크(9번으로 이동, 아래 화면 이동 참고), 이전/다음/초기화 버튼, 수정 모드 진입 시 상단 "기존 라운드 수정 중" 안내 배지
 - **데이터 의존성**: `Round` 생성(`holesPlayed`, `frontLoopId`, `backLoopId` 포함 — Step1에서 선택한 `GolfCourseLoop` 참조), 홀별 초기 Par는 선택된 루프의 `GolfCourseHole.par`를 기본값으로 불러오되 화면에서 PAR 버튼으로 재조정 가능, `HoleScore` 홀 수만큼 생성(`strokes`, `par`, `teeShotResult`, `penaltyStrokes`, `obStrokes`, `bunkerUsed`, `pinDistanceType`, `pinDistanceMeters`, `onGreenStrokes`, `puttStrokes`, `memo`), 날씨 API(좌표 기반 스냅샷 → `Round.weatherSnapshot`)
 - **상태**: 저장 중 로딩, 필수 홀 미입력 시 유효성 에러, 온그린 핀거리 미선택 등 선택 항목은 저장 허용(필수 아님), 루프 미선택 라운드는 Par 기본값 없이 PAR 버튼으로 직접 지정
-- **진입 파라미터**:
-  - Step1 경유(신규 등록): `holes`, `course`, `date`, `frontLoop`, `backLoop`
-  - **9번 라운드 상세 "수정" 버튼 경유(기존 라운드 수정)**: 위 파라미터에 더해 `edit=1`, `scores=<홀별 타수 콤마 구분>`(예: `4,5,4,3,...`) — 스코어카드에 기존 타수가 이미 입력·저장된 상태로 채워짐. 과거 라운드는 `teeShotResult`/`pinDistanceType` 등 상세 필드가 없을 수 있어(해당 컬럼이 nullable인 이유) `strokes`만 복원하고 온그린/퍼트는 화면에서 임시로 역산해 보여주며, 티샷결과·핀거리 등은 값 없이 시작(사용자가 필요 시 채워 넣음)
-- **화면 이동**: "라운드 상세" 링크(기존 "전체홀" 버튼을 2026-07-16 변경) 클릭 시 **9번(라운드 상세)**를 `course`, `date`, `score`(지금까지 저장한 홀들의 타수 합계), `weather`, `ownerId=me`, `owner` 파라미터와 함께 호출 — 홀을 저장하거나 초기화할 때마다 `score`가 최신 합계로 갱신됨. 실제 구현 시에는 저장되지 않은 라운드도 임시 조회가 가능해야 하므로 서버에 임시저장(draft) 또는 세션 상태 처리 방식을 별도로 설계해야 함(현재 목업은 클라이언트 상태만으로 시연)
+- **진입 파라미터(실제 구현)**:
+  - Step1 경유(신규 등록): `step=2`, `courseId`, `holesPlayed`, `date`, `frontLoopId`, `backLoopId`
+  - **수정 모드**: `step=2`, `edit=<roundId>` — `/rounds/new` 서버 컴포넌트가 해당 `Round`+`HoleScore` 전체를 DB에서 조회해 `teeShotResult`/`pinDistanceType`/`memo` 등 모든 필드를 그대로 복원(목업의 `scores=` 방식과 달리 필드 유실 없음)
+- **화면 이동**: "라운드 상세" 버튼 클릭 시 **9번(라운드 상세, `/rounds/[id]`)**을 실제 `roundId`로 이동(첫 홀 저장 전에는 버튼 비활성). 9번 화면 자체는 아직 placeholder라 상세 내용 표시는 9번 구현 시 이어짐.
 
 ## 8. 스코어 조회 (목록, 2026-07-16 조회조건 개편)
 
@@ -238,3 +239,5 @@ DB 스키마 근거: `prisma/schema.prisma` (User, GolfCourse, GolfCourseLoop, G
 | 04. 대시보드 | "스코어 등록" 메뉴 카드 | 07-round-new-step1.html | 없음 |
 | 09. 라운드 상세 | "수정" | 07-round-new-step2.html | `edit=1`, `course`, `date`, `holes`, `scores` |
 | 7-1. Step1 | "스코어 카드" | 07-round-new-step2.html | `holes`, `course`, `date`, `frontLoop`, `backLoop` |
+
+> 위 표는 목업(정적 HTML) 기준 파라미터명이다. 실제 구현(2026-07-21)은 `/rounds/new` 단일 라우트가 `step` 쿼리로 Step1/Step2를 분기하며, `course`→`courseId`, `holes`→`holesPlayed`, `frontLoop`/`backLoop`→`frontLoopId`/`backLoopId`로 이름을 바꾸고 `scores=` 대신 `edit=<roundId>`를 사용한다. 자세한 내용은 위 7-1/7-2 섹션의 "실제 구현 설계 변경" 참고.
