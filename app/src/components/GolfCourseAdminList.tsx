@@ -17,35 +17,6 @@ type GolfCourseAdminListProps = {
   courses: AdminCourseRow[];
 };
 
-function statusBadge(row: AdminCourseRow) {
-  if (row.loopNames.length === 0) {
-    return (
-      <span className="rounded-md bg-[#F3E4E0] px-2 py-0.5 text-[11px] font-semibold text-[#C1552F]">
-        미등록
-      </span>
-    );
-  }
-  if (row.filledHoles === row.expectedHoles) {
-    return (
-      <span className="rounded-md bg-card-bg2 px-2 py-0.5 text-[11px] font-semibold text-primary">
-        완료 {row.filledHoles}/{row.expectedHoles}
-      </span>
-    );
-  }
-  if (row.filledHoles === 0) {
-    return (
-      <span className="rounded-md bg-[#F3E4E0] px-2 py-0.5 text-[11px] font-semibold text-[#C1552F]">
-        미등록 0/{row.expectedHoles}
-      </span>
-    );
-  }
-  return (
-    <span className="rounded-md bg-[#FBEFD9] px-2 py-0.5 text-[11px] font-semibold text-accent">
-      부분 {row.filledHoles}/{row.expectedHoles}
-    </span>
-  );
-}
-
 export default function GolfCourseAdminList({
   courses,
 }: GolfCourseAdminListProps) {
@@ -104,7 +75,6 @@ export default function GolfCourseAdminList({
                       (row.lastModified ? ` · ${row.lastModified} 수정` : "")}
                 </div>
               </div>
-              {statusBadge(row)}
             </Link>
           ))}
         </div>
