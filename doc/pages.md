@@ -80,12 +80,12 @@ DB 스키마 근거: `prisma/schema.prisma` (User, GolfCourse, GolfCourseLoop, G
 
 ### 7-1. Step1 — 코스 선택
 
-- **레이아웃**: 골프장 선택 → 홀 수(9H/18H) 토글 → 전반(1~9홀) 코스 선택 + (18H인 경우만) 후반(10~18홀) 코스 선택 → 라운드 일자 → 라운드 당시 날씨 자동 표시 → "스코어 카드" 버튼
-- **주요 컴포넌트**: 골프장 콤보박스, 9H/18H 세그먼트 버튼, 전반/후반 코스 선택(9H면 후반 숨김), 날짜 피커, 날씨 카드(자동)
-- **데이터 의존성**: `GolfCourse`(선택용), `GolfCourseLoop`(선택된 골프장의 루프 목록 — 전반/후반 select 옵션으로 표시, `sortOrder` 순), 날씨 API(좌표 기반 스냅샷 미리보기)
-- **상태**: 9H 선택 시 후반 코스 선택란 숨김, 선택한 골프장에 루프가 1개도 등록되어 있지 않으면 코스 선택란 대신 "코스 정보 없음(관리자 등록 필요)" 안내 후 루프 선택 없이 진행 가능(→ `Round.frontLoopId/backLoopId`는 null로 저장)
+- **레이아웃**: 골프장 선택 → 홀 수(9H/18H) 토글 → 전반(1~9홀) 코스 선택 + (18H인 경우만) 후반(10~18홀) 코스 선택 → 라운드 일자 → **출발 시간(오전/오후+시 1~12+분)** → 라운드 당시 날씨 자동 표시 → "스코어 카드" 버튼
+- **주요 컴포넌트**: 골프장 콤보박스, 9H/18H 세그먼트 버튼, 전반/후반 코스 선택(9H면 후반 숨김), 날짜 피커, **출발 시간 커스텀 피커(오전/오후 토글 + 시 select 1~12 + 분 select 0~59)** — 네이티브 `<input type=time>`이 브라우저/OS 로캘에 따라 24시간제로 뜨거나 스피너 숫자가 이상하게 반복 표시되는 문제가 있어 직접 조합하는 방식으로 구현(2026-07-21), 날씨 카드(자동)
+- **데이터 의존성**: `GolfCourse`(선택용), `GolfCourseLoop`(선택된 골프장의 루프 목록 — 전반/후반 select 옵션으로 표시, `sortOrder` 순), 날씨 API(좌표 기반 스냅샷 미리보기), `Round.startTime`("HH:MM" 24시간제로 저장, 오전/오후+시+분 입력값을 변환)
+- **상태**: 9H 선택 시 후반 코스 선택란 숨김, 선택한 골프장에 루프가 1개도 등록되어 있지 않으면 코스 선택란 대신 "코스 정보 없음(관리자 등록 필요)" 안내 후 루프 선택 없이 진행 가능(→ `Round.frontLoopId/backLoopId`는 null로 저장), **"스코어 카드" 버튼 클릭 시 동일 골프장·일자·출발시간으로 이미 등록된 라운드가 있으면 `GET /api/rounds/check-duplicate`로 확인해 Step2 진입을 막고 안내 메시지 표시(2026-07-21 신규)**
 - **진입 파라미터**: `?courseId=<GolfCourse.id>` — 6번 화면에서 넘어온 경우 골프장 select를 미리 선택
-- **다음 화면 호출**: "스코어 카드" 버튼 클릭 시 **7-2(Step2)**를 `?step=2&courseId=&holesPlayed=&date=&frontLoopId=&backLoopId=` 파라미터와 함께 호출(`frontLoopId`/`backLoopId`는 선택된 `GolfCourseLoop.id`)
+- **다음 화면 호출**: "스코어 카드" 버튼 클릭 시(중복 없을 때만) **7-2(Step2)**를 `?step=2&courseId=&holesPlayed=&date=&startTime=&frontLoopId=&backLoopId=` 파라미터와 함께 호출(`frontLoopId`/`backLoopId`는 선택된 `GolfCourseLoop.id`, `startTime`은 "HH:MM" 24시간제)
 
 ### 7-2. Step2 — 스코어카드 입력
 

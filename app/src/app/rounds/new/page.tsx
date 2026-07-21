@@ -135,6 +135,7 @@ export default async function RoundNewPage({
           courseName={round.golfCourse.name}
           holesPlayed={round.holesPlayed === 9 ? 9 : 18}
           date={round.playedAt.toISOString().slice(0, 10)}
+          startTime={round.startTime}
           isEdit
           initialHoles={initialHoles}
         />
@@ -160,6 +161,7 @@ export default async function RoundNewPage({
 
   const holesPlayed = sp.holesPlayed === "9" ? 9 : 18;
   const date = typeof sp.date === "string" ? sp.date : todayStr();
+  const startTime = typeof sp.startTime === "string" ? sp.startTime : null;
   const frontLoopId = typeof sp.frontLoopId === "string" ? sp.frontLoopId : undefined;
   const backLoopId = typeof sp.backLoopId === "string" ? sp.backLoopId : undefined;
 
@@ -184,6 +186,7 @@ export default async function RoundNewPage({
         courseName={course.name}
         holesPlayed={holesPlayed}
         date={date}
+        startTime={startTime}
         isEdit={false}
         initialHoles={initialHoles}
       />

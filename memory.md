@@ -1080,3 +1080,24 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 사용자가 로컬에서 9번 화면 확인: 06번 "내 라운드 이력"이나 7-2번 "라운드 상세" 버튼으로 진입해 실제 저장된 홀 스코어가 매트릭스로 잘 보이는지, 메모 아이콘 클릭 동작, "수정" 버튼이 7-2 수정모드로 정확히 이어지는지, "삭제" 버튼 동작(삭제 후 `/rounds`로 이동은 되지만 8번 자체가 아직 placeholder라 빈 화면일 수 있음 — 정상). 이후 남은 미구현 화면은 8번(스코어 조회 목록)뿐 — 이걸로 1~14번 전 화면이 완료된다.
+
+## 73. 출발 시간(Starting Time) 필드 실구현 + 중복 라운드 등록 방지 (2026-07-21)
+
+- 사용자 요청 흐름: (1) "스코어 등록 step1 화면에 라운드 일자 다음에 Starting Time 추가, 형식은 시간과 분까지만. 목업만 수정해서 알려줘." → 목업(`07-round-new-step1.html`)에 네이티브 `<input type=time>`으로 추가. (2) "출발시간 시간 항목 오전 오후로 입력하려면 01~12까지만 선택가능 해야 하는데 숫자가 반복적으로 표시됨." → 네이티브 time input이 브라우저/OS 로캘에 따라 24시간제로 뜨거나 스피너 숫자가 이상하게 표시되는 문제라, 오전/오후 토글 + 시(01~12) select + 분(00~59) select로 직접 조합하는 커스텀 피커로 목업 교체. (3) "동일한 코스에 일자/시간이 같은 스코어가 이미 등록되어 있으며 메세지 처리하고 입력 안되게 로직 구성해줘." → 이번엔 "목업만" 단서가 없어 실제 구현까지 진행. 이 3번째 요청이 "일자/시간이 같은"을 요구하므로, 그동안 목업에만 있던 출발 시간을 실제 스키마/화면에도 반영하는 게 선행되어야 했음.
+- **스키마 변경**: `Round.startTime String?` 추가("HH:MM" 24시간제 문자열, nullable — 기존 라운드는 null). 마이그레이션 `app/prisma/migrations/20260721090000_add_round_start_time/migration.sql`(`ALTER TABLE "Round" ADD COLUMN "startTime" TEXT;`) 직접 작성(샌드박스가 로컬 DB에 접근 못해 `prisma migrate dev` 실행 불가, 기존 마이그레이션 파일 포맷을 그대로 따라 수기 작성).
+- **신규 파일**:
+  - `app/src/lib/round-duplicate.ts`: `findDuplicateRound({userId, golfCourseId, playedAt, startTime})` — 동일 조건 라운드 조회 공용 함수, `DUPLICATE_ROUND_MESSAGE` 공용 에러 문구.
+  - `app/src/app/api/rounds/check-duplicate/route.ts`(GET): Step1에서 "스코어 카드" 클릭 시 사전 확인용. `{duplicate, message}` 반환.
+- **변경 파일**:
+  - `app/src/app/api/rounds/route.ts`(POST): `startTime` 필드 검증("HH:MM" 정규식) 추가, `Round` 생성 직전 `findDuplicateRound`로 최종 재확인 후 있으면 409 + 메시지 반환(최종 방어선 — check-duplicate를 우회해도 여기서 막힘).
+  - `app/src/components/RoundStep1.tsx`: 목업과 동일한 오전/오후 토글 + 시(01~12)/분(00~59) select 커스텀 피커 추가. "스코어 카드" 클릭 시 `goNext()`가 먼저 `GET /api/rounds/check-duplicate` 호출 → 중복이면 버튼 아래 빨간 안내 문구 표시하고 Step2로 이동 자체를 막음(중복 아니면 `startTime`을 24시간제로 변환해 쿼리에 포함시켜 이동). 날짜/시간/골프장 중 하나라도 바꾸면 이전 중복 안내는 자동으로 지움.
+  - `app/src/components/RoundStep2.tsx`: `startTime` prop 추가 → 첫 홀 저장 시 `POST /api/rounds` 바디에 포함. 상단 정보 바에 `· 오전 09:00 출발` 형식으로 표시(`startTimeLabel()` 헬퍼).
+  - `app/src/app/rounds/new/page.tsx`: 신규 모드는 `?startTime=` 쿼리 파싱해 전달, 수정 모드는 `round.startTime`을 그대로 전달.
+  - `app/src/app/rounds/[id]/page.tsx`(9번): 요약 카드 메타 줄에 `startTime`이 있으면 "오전/오후 HH:MM 출발"을 날짜와 날씨 사이에 추가 표시.
+- **중요한 환경 제약**: 샌드박스에서 `npx prisma generate`가 `node_modules/.prisma/client` 파일 잠금(`EPERM: operation not permitted, unlink ...`) 때문에 10회 넘게 재시도해도 계속 실패 — git의 `index.lock`과 비슷하지만 이쪽은 한 번도 성공하지 못함. 그 결과 `npx tsc --noEmit`에서 `startTime` 관련 타입 에러 5건이 발생하는데, 전부 "생성된 Prisma 타입에 아직 `startTime`이 없다"는 동일한 원인이고 나머지 로직 에러는 없음(스키마와 코드 자체는 일치). **로컬에서 `git pull` → `npx prisma migrate deploy`(또는 `dev`) → `npx prisma generate` 실행하면 해소되어야 함.**
+- **문서 갱신**: `doc/개발리스트.md` 7-1에 "로컬 반영 필요" 경고 블록(마이그레이션+generate 안내) 추가, 출발 시간/중복 검증 행 ✅ 반영. `doc/pages.md` 7-1 섹션에 출발 시간 피커·중복 검증 설명 추가.
+- **검증**: `npx tsc --noEmit`은 위에서 설명한 5건(전부 동일 원인)을 제외하고 클린. 로컬 DB 접근 불가로 실제 중복 등록 차단 동작과 마이그레이션 적용은 미검증 — 사용자가 로컬에서 확인 필요.
+
+### 다음 세션 시작 시
+
+- **가장 먼저 확인할 것**: 사용자가 로컬에서 `npx prisma migrate deploy`(또는 `dev`) + `npx prisma generate` 실행했는지, 그 후 `npx tsc --noEmit`이 클린한지. 그 다음 실제 동작 확인: 7-1에서 출발 시간 오전/오후+시+분 선택, 같은 골프장·일자·시간으로 두 번째 스코어 등록 시도 시 안내 메시지가 뜨고 Step2로 못 넘어가는지, 9번 라운드 상세 요약 카드에 출발 시간이 잘 보이는지. 그 외 남은 미구현 화면은 여전히 8번(스코어 조회 목록)뿐.

@@ -51,12 +51,24 @@ function weekdayLabel(dateStr: string) {
   }
 }
 
+// "HH:MM" 24시간제 → "오전/오후 HH:MM" 12시간제 표시로 변환.
+function startTimeLabel(startTime: string | null) {
+  if (!startTime) return null;
+  const [hStr, mStr] = startTime.split(":");
+  let h = Number(hStr);
+  const ampm = h < 12 ? "오전" : "오후";
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return `${ampm} ${String(h).padStart(2, "0")}:${mStr}`;
+}
+
 export default function RoundStep2({
   roundId: initialRoundId,
   courseId,
   courseName,
   holesPlayed,
   date,
+  startTime,
   isEdit,
   initialHoles,
 }: {
@@ -65,6 +77,7 @@ export default function RoundStep2({
   courseName: string;
   holesPlayed: 9 | 18;
   date: string;
+  startTime: string | null;
   isEdit: boolean;
   initialHoles: HoleState[];
 }) {
@@ -132,6 +145,7 @@ export default function RoundStep2({
             golfCourseId: courseId,
             playedAt: date,
             holesPlayed,
+            startTime,
           }),
         });
         const data = await res.json();
@@ -269,7 +283,7 @@ export default function RoundStep2({
       </div>
 
       <div className="mb-3.5 rounded-lg bg-card-bg p-2 text-center text-[11.5px] font-bold text-primary">
-        [ {weekdayLabel(date)} {courseName} {holesPlayed}H ]
+        [ {weekdayLabel(date)} {courseName} {holesPlayed}H{startTimeLabel(startTime) ? ` · ${startTimeLabel(startTime)} 출발` : ""} ]
       </div>
 
       {isEdit && (

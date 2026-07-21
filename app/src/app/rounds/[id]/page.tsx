@@ -71,6 +71,15 @@ export default async function RoundDetailPage({
 
   const dateLabel = round.playedAt.toISOString().slice(0, 10).replace(/-/g, ".");
   const weatherLabel = round.weatherSnapshot ?? "날씨 정보 없음";
+  const startTimeLabel = (() => {
+    if (!round.startTime) return null;
+    const [hStr, mStr] = round.startTime.split(":");
+    let h = Number(hStr);
+    const ampm = h < 12 ? "오전" : "오후";
+    if (h === 0) h = 12;
+    else if (h > 12) h -= 12;
+    return `${ampm} ${String(h).padStart(2, "0")}:${mStr} 출발`;
+  })();
 
   return (
     <main className="mx-auto min-h-screen max-w-md p-5 pb-24">
@@ -79,7 +88,8 @@ export default async function RoundDetailPage({
       <div className="mb-4 rounded-xl bg-primary p-4 text-white">
         <div className="mb-1 text-[15px] font-semibold">{round.golfCourse.name}</div>
         <div className="mb-2.5 text-xs text-white/70">
-          {dateLabel} · {weatherLabel}
+          {dateLabel}
+          {startTimeLabel ? ` · ${startTimeLabel}` : ""} · {weatherLabel}
         </div>
         <div className="text-2xl font-bold">{hasAnyScore ? `${totalScore}타` : "기록 없음"}</div>
         {!isOwner && (

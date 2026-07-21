@@ -161,6 +161,11 @@ model Round {
   golfCourseId String
   playedAt     DateTime
 
+  // 출발 시간(Starting Time), "HH:MM" 24시간제 문자열. (2026-07-21 신규)
+  // 같은 골프장·같은 일자·같은 출발 시간으로 이미 등록된 라운드가 있으면 중복 등록을 막는 데 사용
+  // (동일 일자에 시간대만 다른 라운드는 정상적인 별개 라운드로 허용).
+  startTime String?
+
   // 스코어 등록 Step1(코스 선택)에서 선택하는 홀 수. 9 또는 18. (2026-07-16 신규)
   holesPlayed Int @default(18)
 
