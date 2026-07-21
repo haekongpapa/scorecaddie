@@ -898,3 +898,36 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 사용자가 로컬에서 뒤로가기 버튼이 한 줄로 정상 표시되는지 확인 후 피드백. 이후 06번 화면 확인 결과와 함께 7-1/7-2 또는 12번/13번 중 지정하는 순서로 진행.
+
+## 61. GitHub push protection — to-do.txt의 Google OAuth secret 노출/제거 (2026-07-21)
+
+- 60번 커밋을 로컬에서 push하는 과정에서 GitHub push protection이 `to-do.txt:50`의 Google OAuth Client Secret을 감지해 push가 거부됨(`remote rejected ... repository rule violations`). 원격에는 올라간 적 없음(거부됐으므로).
+- 원인: `to-do.txt`에 Google OAuth secret, data.go.kr 계정 비밀번호/serviceKey, GitHub 계정 비밀번호가 평문으로 들어있었고, 이게 사용자가 로컬에서 실행한 커밋에 포함됨.
+- **조치**:
+  - `to-do.txt`에서 위 계정정보 전부 제거, 대신 신규 `credentials.local.txt`(git 미추적)로 이동.
+  - `.gitignore`에 `credentials.local.txt` 추가.
+  - 샌드박스 git은 여전히 쓰기 계열 명령 불가(index.lock 권한 문제 지속)라 히스토리 재작성은 사용자가 로컬에서 직접 수행: `git reset --soft origin/main` → (제가 수정해둔 파일 상태 그대로) 재커밋 → push. 이 방법을 쓴 이유는 문제의 커밋들이 아직 origin에 반영되지 않은 상태였어서, soft reset으로 되돌리고 깨끗한 내용으로 재커밋하면 시크릿이 포함된 커밋 오브젝트가 아예 push 대상에서 빠지기 때문(rebase/filter-branch 같은 복잡한 히스토리 재작성 불필요).
+  - 사용자에게 Google OAuth Client Secret / data.go.kr 비밀번호 / GitHub 비밀번호 재발급(rotate) 권장.
+  - 사용자가 로컬 `.env`의 `GOOGLE_CLIENT_SECRET`/`PUBLIC_DATA_API_KEY` 값을 새로 발급받아 갱신함(`credentials.local.txt`도 사용자가 직접 새 값으로 갱신 — git 미추적이라 안전).
+  - 사용자가 "git push 했어" 확인 → `git fetch` 후 `git log origin/main`이 로컬과 `a88eca5`로 일치, `to-do.txt` 원격 버전에도 시크릿 없음을 재확인. **push protection 이슈 완전 해결.**
+- **교훈/재발 방지**: 앞으로 `to-do.txt`나 다른 git 추적 문서에 API 키/비밀번호 등 실제 계정정보를 절대 직접 적지 않고, `credentials.local.txt`(git 미추적)에만 기록하도록 사용자에게도 안내함.
+
+## 62. 06번에 이어 다음 화면 결정 — 12번(관리자 루프·Par 입력) 선택 및 실제 구현 (2026-07-21)
+
+- 사용자 질문: "그럼 다음으로 진행하지. 어떤 화면 할지 알려줘." — AskUserQuestion으로 4가지 옵션(12번 추천/7-1·7-2/13번/14번) 제시, 12번 추천 사유는 "652개 골프장 전부 루프/Par가 없어서, 이걸 먼저 해야 7-1/7-2(스코어 등록)를 실제 데이터로 테스트할 수 있음". 사용자가 12번 선택.
+- **신규 파일**:
+  - `app/src/lib/admin-api.ts`: `requireAdminSession()` — 세션+ADMIN role 체크 공용 헬퍼(12번 API가 3개 라우트로 나뉘며 반복되는 체크를 분리; 기존 11번 sync/route.ts는 라우트가 1개뿐이라 인라인 유지, 나중에 admin API 늘어나면 그쪽도 통합 고려).
+  - `app/src/app/api/admin/golf-courses/[id]/loops/route.ts`(POST, 루프 생성), `.../loops/[loopId]/route.ts`(PATCH 이름/순서, DELETE), `.../loops/[loopId]/holes/route.ts`(PUT, 9홀 Par 트랜잭션 upsert).
+  - `app/src/components/GolfCourseParEditor.tsx`(클라이언트): 루프 탭(더블클릭 이름변경/▲▼ 순서변경/✕ 삭제 — 즉시 API 반영), "+ 루프 추가", 9홀 Par 그리드(3열, select 3/4/5), "저장" 버튼(활성 루프만 배치 저장, dirty 상태 아니면 비활성화 + "저장됨" 표시).
+  - `app/src/app/admin/golf-courses/[id]/par/page.tsx`(placeholder → 실구현): 골프장+루프+홀+`_count`(참조 라운드 수) 조회 후 위 컴포넌트에 전달.
+- **설계 변경(목업 대비)**:
+  1. 드래그 재정렬 → ▲▼ 버튼(새 DnD 라이브러리 추가 회피, 인접 루프와 `sortOrder` swap).
+  2. 저장 범위를 "활성 루프의 Par 값만"으로 한정 — 루프 CRUD(추가/이름변경/삭제/순서변경)는 클릭 즉시 API 반영, Par 값 변경만 로컬 편집 후 "저장" 버튼으로 배치 반영. 다른 루프로 탭 전환 시 미저장 Par 변경 있으면 confirm 경고.
+  3. 루프 삭제 confirm의 참조 라운드 건수는 페이지 로드 시점 값 사용(재조회 안 함) — 관리자 단독 툴이라 동시성 이슈 낮다고 판단한 근사치.
+  4. 미저장 홀은 Par 4로 기본 표시(select가 3/4/5뿐이라 "미정" 표현 불가 — 목업과 동일한 한계).
+- **문서 갱신**: `doc/pages.md` 12번(실제구현 절 신설), `doc/개발리스트.md` 12번 체크리스트 전체 ✅ 반영.
+- **검증**: `npx tsc --noEmit` EXIT_CODE=0. 로컬 DB 접근 불가로 실제 CRUD 동작(루프 추가/삭제/Par 저장)은 미검증.
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 12번 화면 전체 플로우(루프 추가/이름변경/▲▼순서변경/삭제, Par 저장, 미저장 경고) 실제 확인 후 피드백. 특히 652개 골프장 중 아무거나 하나 골라 루프 2개(전반/후반) + Par 9개씩 등록해보고, 05/06번 화면에 홀수(`18홀` 등)가 정상 반영되는지도 함께 확인하면 좋음. 이후 7-1/7-2(스코어 등록, 이번에 등록한 Par 데이터로 실제 테스트 가능) 또는 13번(CSV 일괄 업로드) 중 지정하는 순서로 진행.
