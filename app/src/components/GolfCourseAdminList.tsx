@@ -17,18 +17,33 @@ type GolfCourseAdminListProps = {
   courses: AdminCourseRow[];
 };
 
+type RegisteredFilter = "전체" | "코스 등록됨";
+
 export default function GolfCourseAdminList({
   courses,
 }: GolfCourseAdminListProps) {
   const [query, setQuery] = useState("");
+  const [registeredFilter, setRegisteredFilter] =
+    useState<RegisteredFilter>("전체");
 
   const filtered = useMemo(() => {
+    let result = courses;
+
+    // "코스 등록됨" 기준은 루프(GolfCourseLoop)가 1개 이상 있는지만 본다.
+    // Par 값이 다 채워졌는지(완료/부분)와는 무관 — 11번 목업(2026-07-21) 설계 그대로.
+    if (registeredFilter === "코스 등록됨") {
+      result = result.filter((c) => c.loopNames.length > 0);
+    }
+
     const q = query.trim();
-    if (!q) return courses;
-    return courses.filter(
-      (c) => c.name.includes(q) || (c.address ?? "").includes(q)
-    );
-  }, [courses, query]);
+    if (q) {
+      result = result.filter(
+        (c) => c.name.includes(q) || (c.address ?? "").includes(q)
+      );
+    }
+
+    return result;
+  }, [courses, query, registeredFilter]);
 
   return (
     <div>
@@ -40,11 +55,30 @@ export default function GolfCourseAdminList({
         className="mb-3 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm"
       />
 
+      <div className="mb-3.5 flex gap-1.5">
+        {(["전체", "코스 등록됨"] as RegisteredFilter[]).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setRegisteredFilter(key)}
+            className={
+              registeredFilter === key
+                ? "rounded-md bg-card-bg2 px-2.5 py-1 text-[11px] font-semibold text-primary"
+                : "rounded-md border border-line px-2.5 py-1 text-[11px] font-semibold text-muted"
+            }
+          >
+            {key}
+          </button>
+        ))}
+      </div>
+
       {filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line p-6 text-center text-sm text-muted">
           {courses.length === 0
             ? "등록된 골프장이 없습니다. 공공 데이터를 업로드해보세요."
-            : "검색 결과가 없습니다."}
+            : registeredFilter === "코스 등록됨"
+              ? "코스가 등록된 골프장이 없습니다."
+              : "검색 결과가 없습니다."}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
