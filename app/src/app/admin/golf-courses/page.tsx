@@ -83,9 +83,16 @@ export default async function AdminGolfCoursesPage() {
 
       <a
         href="/admin/golf-courses/upload"
-        className="mb-3 block w-full rounded-lg border border-primary bg-white py-3 text-center text-sm font-semibold text-primary"
+        className="mb-2 block w-full rounded-lg border border-primary bg-white py-3 text-center text-sm font-semibold text-primary"
       >
         ⇪ CSV 일괄 업로드
+      </a>
+
+      <a
+        href="/api/admin/golf-courses/export"
+        className="mb-3 block w-full rounded-lg border border-line bg-white py-3 text-center text-sm font-semibold text-muted"
+      >
+        ⇩ CSV 내보내기 (현재 등록된 Par 데이터)
       </a>
 
       <GolfCourseAdminList courses={rows} />

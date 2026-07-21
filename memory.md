@@ -931,3 +931,16 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 사용자가 로컬에서 12번 화면 전체 플로우(루프 추가/이름변경/▲▼순서변경/삭제, Par 저장, 미저장 경고) 실제 확인 후 피드백. 특히 652개 골프장 중 아무거나 하나 골라 루프 2개(전반/후반) + Par 9개씩 등록해보고, 05/06번 화면에 홀수(`18홀` 등)가 정상 반영되는지도 함께 확인하면 좋음. 이후 7-1/7-2(스코어 등록, 이번에 등록한 Par 데이터로 실제 테스트 가능) 또는 13번(CSV 일괄 업로드) 중 지정하는 순서로 진행.
+
+## 63. DB 골프장 Par 데이터 CSV 내보내기 기능 추가 (2026-07-21)
+
+- 사용자 요청: "db에 저장된 골프장들의 코스별 파 정보를 조사해서 csv 양식에 맞게 파일로 저장해줘." — 12번 작업 직후 요청. 샌드박스는 사용자 로컬 Postgres(`localhost:5432`, docker)에 네트워크 접근 불가(`/dev/tcp/localhost/5432` 연결 시도 → `Connection refused`로 재확인)이므로, 직접 조회해서 파일로 떨궈줄 수 없어 대신 **관리자가 로컬 브라우저에서 클릭하면 다운로드되는 API**로 구현.
+- **신규 파일**: `app/src/app/api/admin/golf-courses/export/route.ts` — `GET`, `requireAdminSession()`으로 관리자 인증, `GolfCourse`→`GolfCourseLoop`(sortOrder순)→`GolfCourseHole`(holeNumber순)를 13번 업로드와 동일한 CSV 포맷(`골프장명,루프명,홀번호,Par`, UTF-8 BOM, CSV 표준 이스케이프)으로 직렬화해 `Content-Disposition: attachment`로 응답 — 브라우저가 자동으로 파일 다운로드.
+- **핵심 설계 결정**: 12번 UI(`GolfCourseParEditor`)는 미저장 홀을 화면에 Par 4로 기본 표시하지만, 이 내보내기는 "DB 조사" 목적이므로 **실제 `GolfCourseHole` 행이 있는 홀만** 출력하고 UI 기본값은 섞지 않음 — 즉 아직 Par를 저장하지 않은 홀/루프는 결과에서 자연히 빠짐.
+- **11번 화면**(`app/src/app/admin/golf-courses/page.tsx`)에 "⇩ CSV 내보내기" 버튼을 "⇪ CSV 일괄 업로드" 바로 아래 추가(같은 톤이지만 outline 스타일로 구분).
+- **문서 갱신**: `doc/admin-csv-upload.md`에 "CSV 내보내기" 절 신설, `doc/개발리스트.md` 11번 표에 항목 추가 + 오래된 "12번 placeholder" 문구 정정(12번은 62번에서 이미 구현 완료됨에도 이 표만 갱신이 안 돼 있었음).
+- **검증**: `npx tsc --noEmit` EXIT_CODE=0. 실제 다운로드된 CSV 내용은 DB 접근 불가로 미확인.
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 관리자로 로그인 후 11번 화면 "⇩ CSV 내보내기" 버튼 클릭 → 다운로드된 CSV가 12번에서 등록한 Par 데이터와 일치하는지, 한글(골프장명)이 엑셀에서 깨지지 않는지 확인 후 피드백. 이후 7-1/7-2 또는 13번 중 지정하는 순서로 진행.
