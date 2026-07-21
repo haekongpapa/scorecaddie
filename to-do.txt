@@ -43,15 +43,9 @@
 7.관련 DB 및 화면 수정
   1) 골프장 별 코스 등록 및 코스의 각 홀의 규정타수 등록
   2) 골프 스코어 테이블 수정
-  
-[골프장정보 api 준비]
-data.go.kr 회원가입 : wi97 / Hunter@!99
-행정안전부_생활_골프장 조회서비스 계정 개발 신청일 2026-07-14 만료예정일 2028-07-14
-https://apis.data.go.kr/1741000/golf_courses/info?serviceKey=c033b21b4195560ad56251f924a28988ad118dda9a8d3b45824317315503f499&pageNo=1&numOfRows=20'
 
-[github 준비]
-https://github.com/haekongpapa/scorecaddie
-heakongpapa / Hunter@!99 
+[google cloud console / 골프장정보 api / github 계정정보]
+→ credentials.local.txt 참고 (git 미추적 파일, .gitignore에 등록됨)
 
 [DB 구동을 위한 docker 설치]
 https://www.docker.com/products/docker-desktop
@@ -63,6 +57,13 @@ https://nodejs.org
 docker 실행
 docker compose up -d
 docker compose down
+
+[npm 실행]
+npm run dev
+
+[prisma studio]
+cd app
+npx prisma studio
 
 [vscode 설치]
 https://code.visualstudio.com
