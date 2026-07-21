@@ -37,6 +37,19 @@
   .weather-card .desc { font-size:12px; color:var(--text-muted); }
   .weather-card .temp { font-size:16px; font-weight:700; }
   .weather-card .auto { font-size:10px; color:var(--text-muted); margin-top:1px; }
+
+  /* 출발 시간 — 네이티브 <input type=time>은 브라우저/OS 로캘에 따라 24시간제로 표시되거나
+     시간 스피너 숫자가 중복 표시되는 등 동작이 일관되지 않아, 오전/오후 + 시(1~12) + 분(00~59)을
+     직접 조합하는 커스텀 피커로 대체(2026-07-21). */
+  .time-picker { display:flex; align-items:center; gap:6px; margin-bottom:14px; }
+  .ampm-toggle { display:flex; flex:0 0 92px; background:var(--card-bg); border-radius:10px; padding:3px; }
+  .ampm-toggle button {
+    flex:1; border:none; background:transparent; padding:9px 0; font-size:12px; font-weight:600;
+    color:var(--text-muted); border-radius:8px; cursor:pointer; font-family:inherit;
+  }
+  .ampm-toggle button.active { background:var(--primary); color:#fff; }
+  .time-picker select { flex:1; margin-bottom:0; }
+  .time-picker .colon { font-size:14px; font-weight:700; color:var(--text-muted); }
 </style>
 </head>
 <body>
@@ -80,7 +93,15 @@
     <input type="date" value="2026-07-18" id="round-date">
 
     <label>출발 시간 (Starting Time)</label>
-    <input type="time" value="09:00" id="start-time">
+    <div class="time-picker">
+      <div class="ampm-toggle" id="ampm-toggle">
+        <button type="button" class="active" data-ampm="AM">오전</button>
+        <button type="button" data-ampm="PM">오후</button>
+      </div>
+      <select id="start-hour"></select>
+      <span class="colon">:</span>
+      <select id="start-minute"></select>
+    </div>
 
     <div class="weather-card">
       <div class="left">
@@ -95,7 +116,7 @@
 
     <a href="07-round-new-step2.html" class="btn" id="next-link">스코어 카드 &rsaquo;</a>
   </div>
-  <div class="screen-label">7-1. 스코어 등록 · Step 1 (코스 선택) — 출발 시간(Starting Time) 필드 추가 (2026-07-21)</div>
+  <div class="screen-label">7-1. 스코어 등록 · Step 1 (코스 선택) — 출발 시간 오전/오후+시(1~12)/분 커스텀 피커로 수정 (2026-07-21)</div>
 </div>
 <script>
 (function () {
@@ -131,8 +152,39 @@
   var back9Course = document.getElementById('back9-course');
   var emptyHint = document.getElementById('loop-empty-hint');
   var roundDate = document.getElementById('round-date');
-  var startTime = document.getElementById('start-time');
+  var ampmToggle = document.getElementById('ampm-toggle');
+  var startHour = document.getElementById('start-hour');
+  var startMinute = document.getElementById('start-minute');
   var nextLink = document.getElementById('next-link');
+
+  // 시(1~12)/분(00~59) 옵션을 직접 채워 넣어 브라우저 로캘에 따라 숫자가 중복/이상하게
+  // 표시되는 네이티브 time input 문제를 피한다. 기본값 오전 09:00.
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+  var hourOptHtml = '';
+  for (var hh = 1; hh <= 12; hh++) { hourOptHtml += '<option value="' + pad2(hh) + '">' + pad2(hh) + '시</option>'; }
+  startHour.innerHTML = hourOptHtml;
+  startHour.value = '09';
+
+  var minuteOptHtml = '';
+  for (var mm = 0; mm <= 59; mm++) { minuteOptHtml += '<option value="' + pad2(mm) + '">' + pad2(mm) + '분</option>'; }
+  startMinute.innerHTML = minuteOptHtml;
+  startMinute.value = '00';
+
+  function currentAmPm() {
+    var activeBtn = ampmToggle.querySelector('button.active');
+    return activeBtn ? activeBtn.dataset.ampm : 'AM';
+  }
+
+  // 오전/오후 12시간제 입력값을 저장/전달용 24시간제 "HH:MM"로 변환.
+  function currentStartTime24() {
+    var h = parseInt(startHour.value, 10);
+    if (currentAmPm() === 'AM') {
+      if (h === 12) { h = 0; }
+    } else if (h !== 12) {
+      h += 12;
+    }
+    return pad2(h) + ':' + startMinute.value;
+  }
 
   function currentHoles() {
     var activeBtn = holesSeg.querySelector('button.active');
@@ -184,7 +236,7 @@
     params.set('holes', currentHoles());
     params.set('course', courseSelect.value);
     params.set('date', roundDate.value);
-    if (startTime.value) { params.set('startTime', startTime.value); }
+    params.set('startTime', currentStartTime24());
     if (front9Course.value) { params.set('frontLoop', front9Course.value); }
     if (currentHoles() === '18' && back9Course.value) { params.set('backLoop', back9Course.value); }
     nextLink.setAttribute('href', '07-round-new-step2.html?' + params.toString());
@@ -219,7 +271,15 @@
   });
 
   roundDate.addEventListener('change', updateLink);
-  startTime.addEventListener('change', updateLink);
+  startHour.addEventListener('change', updateLink);
+  startMinute.addEventListener('change', updateLink);
+  ampmToggle.querySelectorAll('button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      ampmToggle.querySelectorAll('button').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      updateLink();
+    });
+  });
 
   // 다른 화면(예: 06. 골프장 상세 "이 골프장에서 스코어 등록")에서 골프장을 지정해 진입한 경우
   // ?course= 값으로 골프장 select를 미리 선택해둔다.

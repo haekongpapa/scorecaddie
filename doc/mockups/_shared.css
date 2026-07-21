@@ -103,7 +103,7 @@ h2.section-title { font-size: 13px; color: var(--text-muted); margin: 0 0 10px; 
   font-weight: 500;
 }
 
-input[type=text], input[type=email], input[type=password], input[type=date], input[type=time], input[type=search], select, textarea {
+input[type=text], input[type=email], input[type=password], input[type=date], input[type=search], select, textarea {
   width: 100%;
   padding: 11px 12px;
   border-radius: 8px;
