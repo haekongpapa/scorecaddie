@@ -19,6 +19,14 @@
     white-space: nowrap; z-index: 20;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .course-filter-tabs { display: flex; gap: 6px; margin: 10px 0 12px; }
+  .course-filter-tab {
+    padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--white); color: var(--text-muted); font-size: 12px; font-weight: 600;
+    cursor: pointer;
+  }
+  .course-filter-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 </style>
 </head>
 <body>
@@ -41,29 +49,37 @@
 
     <input type="search" placeholder="골프장 이름 검색">
 
-    <a href="12-admin-course-par.html" class="list-item">
-      <div><div class="title">레이크사이드 CC <span class="loop-count-tag">루프 2개</span></div><div class="sub">경기도 용인시 · 전반·후반 · 2026-07-10 수정</div></div>
-      <span class="badge">완료 18/18</span>
-    </a>
-    <a href="12-admin-course-par.html" class="list-item">
-      <div><div class="title">파인밸리 GC <span class="loop-count-tag">루프 2개</span></div><div class="sub">강원도 춘천시 · 전반·후반 · 2026-07-08 수정</div></div>
-      <span class="badge" style="background:#FBEFD9; color:var(--accent);">부분 9/18</span>
-    </a>
-    <a href="12-admin-course-par.html" class="list-item">
-      <div><div class="title">선셋힐스 CC <span class="loop-count-tag">루프 3개</span></div><div class="sub">충청남도 천안시 · 동·서·남코스 · 27홀</div></div>
-      <span class="badge" style="background:#F3E4E0; color:#C1552F;">미등록 0/27</span>
-    </a>
-    <a href="12-admin-course-par.html" class="list-item">
-      <div><div class="title">그린밸리 CC <span class="loop-count-tag">루프 2개</span></div><div class="sub">경상북도 경주시 · 전반·후반 · 2026-06-30 수정</div></div>
-      <span class="badge">완료 18/18</span>
-    </a>
-    <a href="12-admin-course-par.html" class="list-item">
-      <div><div class="title">선베이 힐스 CC <span class="loop-count-tag" style="background:#F3E4E0; color:#C1552F;">루프 미등록</span></div><div class="sub">전라남도 순천시 · 루프를 먼저 등록해주세요</div></div>
-      <span class="badge" style="background:#F3E4E0; color:#C1552F;">미등록</span>
-    </a>
+    <div class="course-filter-tabs" id="course-filter-tabs">
+      <div class="course-filter-tab active" data-filter="all" onclick="setCourseFilter('all')">전체</div>
+      <div class="course-filter-tab" data-filter="registered" onclick="setCourseFilter('registered')">코스 등록된 골프장만</div>
+    </div>
+
+    <div id="course-list">
+      <a href="12-admin-course-par.html" class="list-item" data-registered="true">
+        <div><div class="title">레이크사이드 CC <span class="loop-count-tag">루프 2개</span></div><div class="sub">경기도 용인시 · 전반·후반 · 2026-07-10 수정</div></div>
+        <span class="badge">완료 18/18</span>
+      </a>
+      <a href="12-admin-course-par.html" class="list-item" data-registered="true">
+        <div><div class="title">파인밸리 GC <span class="loop-count-tag">루프 2개</span></div><div class="sub">강원도 춘천시 · 전반·후반 · 2026-07-08 수정</div></div>
+        <span class="badge" style="background:#FBEFD9; color:var(--accent);">부분 9/18</span>
+      </a>
+      <a href="12-admin-course-par.html" class="list-item" data-registered="true">
+        <div><div class="title">선셋힐스 CC <span class="loop-count-tag">루프 3개</span></div><div class="sub">충청남도 천안시 · 동·서·남코스 · 27홀</div></div>
+        <span class="badge" style="background:#F3E4E0; color:#C1552F;">미등록 0/27</span>
+      </a>
+      <a href="12-admin-course-par.html" class="list-item" data-registered="true">
+        <div><div class="title">그린밸리 CC <span class="loop-count-tag">루프 2개</span></div><div class="sub">경상북도 경주시 · 전반·후반 · 2026-06-30 수정</div></div>
+        <span class="badge">완료 18/18</span>
+      </a>
+      <a href="12-admin-course-par.html" class="list-item" data-registered="false">
+        <div><div class="title">선베이 힐스 CC <span class="loop-count-tag" style="background:#F3E4E0; color:#C1552F;">루프 미등록</span></div><div class="sub">전라남도 순천시 · 루프를 먼저 등록해주세요</div></div>
+        <span class="badge" style="background:#F3E4E0; color:#C1552F;">미등록</span>
+      </a>
+    </div>
+    <div class="muted" id="course-filter-empty" style="display:none; text-align:center; padding:24px 0;">코스가 등록된 골프장이 없습니다.</div>
   </div>
   <div class="toast" id="sync-toast">신규 2개 추가 · 3개 갱신 완료</div>
-  <div class="screen-label">11. 관리자 - 골프장 Par 관리 목록 — 공공 데이터 업로드 결과 토스트 추가 (2026-07-20)</div>
+  <div class="screen-label">11. 관리자 - 골프장 Par 관리 목록 — "코스 등록된 골프장만" 필터 추가 (2026-07-21)</div>
 </div>
 <script>
 (function () {
@@ -90,6 +106,25 @@
       toast.classList.add('show');
       setTimeout(function () { toast.classList.remove('show'); }, 2500);
     }, 700);
+  };
+
+  // "코스 등록된 골프장만" 필터 — 실제 구현 시: GolfCourseLoop가 1개 이상 있는
+  // 골프장만 표시(11번 화면 쿼리에서 loops.length > 0로 필터링). 이 목업에서는
+  // data-registered 속성으로 흉내만 낸다.
+  window.setCourseFilter = function (filter) {
+    document.querySelectorAll('#course-filter-tabs .course-filter-tab').forEach(function (tab) {
+      tab.classList.toggle('active', tab.getAttribute('data-filter') === filter);
+    });
+
+    var items = document.querySelectorAll('#course-list .list-item');
+    var visibleCount = 0;
+    items.forEach(function (item) {
+      var show = filter === 'all' || item.getAttribute('data-registered') === 'true';
+      item.style.display = show ? '' : 'none';
+      if (show) visibleCount++;
+    });
+
+    document.getElementById('course-filter-empty').style.display = visibleCount === 0 ? 'block' : 'none';
   };
 })();
 </script>
