@@ -28,7 +28,7 @@ services:
     container_name: scorecaddie-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@scorecaddie.local
+      PGADMIN_DEFAULT_EMAIL: admin@scorecaddie.com
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"

@@ -194,6 +194,7 @@ DB 스키마 근거: `prisma/schema.prisma` (User, GolfCourse, GolfCourseLoop, G
 - **주요 컴포넌트**: 파일 업로드 드롭존, 샘플 CSV 다운로드 링크, 처리 결과 테이블(행 번호·골프장명·루프명·상태·오류 메시지)
 - **데이터 의존성**: CSV 파싱 → `GolfCourse.name` 매칭 → `GolfCourseLoop`를 이름으로 찾거나 없으면 자동 생성 → `GolfCourseHole` upsert
 - **상태**: 골프장명 매칭 실패, 홀 번호(1~9)/Par 값 유효성 오류, 업로드 중 로딩. 상세 처리 로직은 `doc/admin-csv-upload.md` 참고
+- **실제 구현(2026-07-21)**: `app/src/app/admin/golf-courses/upload/page.tsx` + `app/src/components/CsvUploadForm.tsx`(클라이언트) + `POST /api/admin/golf-courses/upload`. 파서는 신규 작성이 아니라 기존에 있던 `lib/csv.ts`(11번을 CSV 업로드 방식으로 처음 만들었다가 실시간 API로 재구현하며 남아있던 미사용 코드)를 그대로 재사용. 결과 화면은 목업의 성공/실패 전체 나열 테이블 대신, `doc/admin-csv-upload.md`에 이미 확정돼 있던 응답 스펙(`totalRows`/`successCount`/`failCount`/`errors`)을 그대로 따라 실패 행만 표로 보여주고 성공은 건수 요약만 표시 — 문서가 목업보다 나중에 더 구체화된 설계라 문서 쪽을 따름. 샘플 CSV는 API 없이 `public/` 정적 파일로 제공.
 
 ## 14. 관리자 - 회원 관리 (신규, 2026-07-16)
 

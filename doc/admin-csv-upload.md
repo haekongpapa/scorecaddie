@@ -1,5 +1,7 @@
 # 관리자 CSV 일괄 업로드 설계 (화면 13. 관리자 - CSV 일괄 업로드)
 
+> **2026-07-21 실제 구현 완료.** 아래 설계 그대로 구현됨 — `app/src/app/api/admin/golf-courses/upload/route.ts`, `app/src/components/CsvUploadForm.tsx`. 응답 스펙(`totalRows`/`successCount`/`failCount`/`errors`, 오류 목록 상위 200건 제한)도 이 문서 그대로. 미검증(로컬 DB 접근 불가로 샌드박스에서 실제 업로드 동작 확인 못함) — 사용자가 로컬에서 지난번 만든 `wolsongricc-par.csv` 업로드해보고 결과 확인 필요.
+
 골프장 루프별 9홀 Par(규정타수)를 CSV로 한 번에 등록/수정하기 위한 처리 로직 설계.
 관련 화면: `doc/pages.md` 11~13번. 관련 모델: `GolfCourse`, `GolfCourseLoop`, `GolfCourseHole`, `User.role`.
 
