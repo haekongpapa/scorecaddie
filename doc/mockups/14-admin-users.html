@@ -4,6 +4,11 @@
   .filter-row { display:flex; gap:8px; margin-bottom:8px; }
   .filter-row input[type=date] { margin-bottom:0; }
   .filter-row .to-sep { align-self:center; color:var(--text-muted); font-size:12px; }
+
+  .admin-only-row { display:flex; align-items:center; gap:6px; margin-bottom:12px; font-size:12.5px; color:var(--text-muted); }
+  .admin-only-row input[type=checkbox] { width:14px; height:14px; margin:0; cursor:pointer; }
+  .admin-only-row label { margin:0; cursor:pointer; }
+
   .search-btn-row { display:flex; gap:8px; margin-bottom:14px; }
   .search-btn-row .btn { padding:9px; font-size:12.5px; }
   .search-btn-row .btn.secondary { flex:0 0 70px; }
@@ -26,7 +31,7 @@
   table.member-grid td.col-email-cell { text-align:left; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   table.member-grid td.name-empty { color:var(--text-muted); font-style:italic; font-weight:400; }
   table.member-grid tr.row-selected { background:var(--card-bg); }
-  table.member-grid input[type=checkbox] { width:14px; height:14px; margin:0; cursor:pointer; }
+  table.member-grid input[type=checkbox], table.member-grid input[type=radio] { width:14px; height:14px; margin:0; cursor:pointer; }
   table.member-grid input[type=checkbox]:disabled { cursor:default; opacity:0.85; }
 
   .bulk-bar {
@@ -34,7 +39,7 @@
     background:var(--card-bg); border-radius:10px; padding:10px 12px; margin-top:12px;
   }
   .bulk-bar.show { display:flex; }
-  .bulk-bar .cnt { font-size:12px; font-weight:700; color:var(--primary); white-space:nowrap; }
+  .bulk-bar .cnt { font-size:12px; font-weight:700; color:var(--primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .bulk-bar .actions { display:flex; gap:6px; }
   .bulk-bar button {
     border:1px solid var(--primary); background:#fff; color:var(--primary); font-size:11px; font-weight:700;
@@ -62,6 +67,11 @@
       <input type="date" id="filter-to">
     </div>
 
+    <div class="admin-only-row">
+      <input type="checkbox" id="filter-admin-only">
+      <label for="filter-admin-only">관리자만 보기</label>
+    </div>
+
     <div class="search-btn-row">
       <button type="button" class="btn" id="search-btn">검색</button>
       <button type="button" class="btn secondary" id="reset-btn">초기화</button>
@@ -75,7 +85,7 @@
       </colgroup>
       <thead>
         <tr>
-          <th><input type="checkbox" id="select-all-checkbox"></th>
+          <th></th>
           <th>이름</th>
           <th>이메일</th>
           <th>가입일</th>
@@ -87,18 +97,15 @@
     <div class="empty-state" id="empty-state" style="display:none;">검색 조건에 맞는 회원이 없습니다</div>
 
     <div class="bulk-bar" id="bulk-bar">
-      <span class="cnt" id="bulk-count">0명 선택됨</span>
-      <div class="actions">
-        <button type="button" id="grant-admin-btn">어드민 권한 부여</button>
-        <button type="button" id="revoke-admin-btn">어드민 권한 해제</button>
-      </div>
+      <span class="cnt" id="bulk-count"></span>
+      <div class="actions" id="bulk-actions"></div>
     </div>
   </div>
-  <div class="screen-label">14. 관리자 - 회원 관리 (신규, 2026-07-16)</div>
+  <div class="screen-label">14. 관리자 - 회원 관리 — 단일 선택 + 역할별 버튼 + 관리자만 보기 (2026-07-21)</div>
 </div>
 <script>
 (function () {
-  // 회원 mock 데이터. 실제 구현 시 GET /api/admin/users?name=&from=&to= 응답으로 대체.
+  // 회원 mock 데이터. 실제 구현 시 GET /api/admin/users?name=&from=&to=&adminOnly= 응답으로 대체.
   // name은 User.name(nullable) 그대로 반영 — 소셜 로그인 초기 상태 등 이름 미입력 계정 예시 포함.
   var ALL_MEMBERS = [
     { id: 'u1', name: '김재홍', email: 'jaehong@example.com', createdAt: '2026-05-02', role: 'ADMIN' },
@@ -111,22 +118,28 @@
     { id: 'u8', name: '윤서아', email: 'seoah@example.com', createdAt: '2026-07-14', role: 'USER' }
   ];
 
-  var selected = {}; // id -> true
+  // 2026-07-21: 다중 선택 → 단일 선택으로 변경(한 번에 한 명씩만 권한 변경). selectedId는
+  // 최대 1개의 id만 담는다(없으면 null).
+  var selectedId = null;
   var currentList = ALL_MEMBERS.slice();
 
   var tbody = document.getElementById('member-tbody');
   var emptyState = document.getElementById('empty-state');
   var totalCount = document.getElementById('total-count');
-  var selectAllCb = document.getElementById('select-all-checkbox');
   var bulkBar = document.getElementById('bulk-bar');
   var bulkCount = document.getElementById('bulk-count');
+  var bulkActions = document.getElementById('bulk-actions');
+
+  function findMember(id) {
+    return ALL_MEMBERS.filter(function (m) { return m.id === id; })[0] || null;
+  }
 
   function renderRows() {
     if (!currentList.length) {
       tbody.innerHTML = '';
       emptyState.style.display = '';
       totalCount.textContent = '전체 0명';
-      updateBulkBar();
+      updateActionBar();
       return;
     }
     emptyState.style.display = 'none';
@@ -136,12 +149,12 @@
       var nameCell = m.name
         ? m.name
         : '<span class="name-empty">이름 없음</span>';
-      var checked = selected[m.id] ? ' checked' : '';
-      var rowClass = selected[m.id] ? ' class="row-selected"' : '';
+      var checked = selectedId === m.id ? ' checked' : '';
+      var rowClass = selectedId === m.id ? ' class="row-selected"' : '';
       var adminChecked = m.role === 'ADMIN' ? ' checked' : '';
       return (
         '<tr' + rowClass + ' data-id="' + m.id + '">' +
-          '<td><input type="checkbox" class="row-checkbox" data-id="' + m.id + '"' + checked + '></td>' +
+          '<td><input type="radio" name="member-radio" class="row-radio" data-id="' + m.id + '"' + checked + '></td>' +
           '<td class="col-name-cell">' + nameCell + '</td>' +
           '<td class="col-email-cell">' + m.email + '</td>' +
           '<td>' + m.createdAt + '</td>' +
@@ -150,59 +163,55 @@
       );
     }).join('');
 
-    tbody.querySelectorAll('.row-checkbox').forEach(function (cb) {
-      cb.addEventListener('change', function () {
-        var id = cb.dataset.id;
-        if (cb.checked) { selected[id] = true; } else { delete selected[id]; }
-        cb.closest('tr').classList.toggle('row-selected', cb.checked);
-        syncSelectAll();
-        updateBulkBar();
+    tbody.querySelectorAll('.row-radio').forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        selectedId = radio.checked ? radio.dataset.id : null;
+        tbody.querySelectorAll('tr').forEach(function (tr) {
+          tr.classList.toggle('row-selected', tr.getAttribute('data-id') === selectedId);
+        });
+        updateActionBar();
       });
     });
-
-    syncSelectAll();
   }
 
-  function syncSelectAll() {
-    var idsOnScreen = currentList.map(function (m) { return m.id; });
-    var selectedOnScreen = idsOnScreen.filter(function (id) { return selected[id]; });
-    if (selectedOnScreen.length === 0) {
-      selectAllCb.checked = false;
-      selectAllCb.indeterminate = false;
-    } else if (selectedOnScreen.length === idsOnScreen.length) {
-      selectAllCb.checked = true;
-      selectAllCb.indeterminate = false;
-    } else {
-      selectAllCb.checked = false;
-      selectAllCb.indeterminate = true;
+  // 선택된 회원의 현재 role에 따라 버튼을 하나만 노출한다 — USER면 "어드민 권한 부여"만,
+  // ADMIN이면 "어드민 권한 해제"만. (기존엔 두 버튼이 항상 같이 떠서 잘못 누를 여지가 있었음)
+  function updateActionBar() {
+    var member = selectedId ? findMember(selectedId) : null;
+    if (!member) {
+      bulkBar.classList.remove('show');
+      bulkActions.innerHTML = '';
+      bulkCount.textContent = '';
+      return;
     }
-  }
 
-  function updateBulkBar() {
-    var n = Object.keys(selected).length;
-    bulkCount.textContent = n + '명 선택됨';
-    bulkBar.classList.toggle('show', n > 0);
-  }
+    var displayName = member.name || '이름 없음';
+    bulkCount.textContent = displayName + ' 선택됨';
 
-  selectAllCb.addEventListener('change', function () {
-    if (selectAllCb.checked) {
-      currentList.forEach(function (m) { selected[m.id] = true; });
+    if (member.role === 'ADMIN') {
+      bulkActions.innerHTML = '<button type="button" class="danger" id="revoke-admin-btn">어드민 권한 해제</button>';
     } else {
-      currentList.forEach(function (m) { delete selected[m.id]; });
+      bulkActions.innerHTML = '<button type="button" id="grant-admin-btn">어드민 권한 부여</button>';
     }
-    renderRows();
-    updateBulkBar();
-  });
+    bulkBar.classList.add('show');
+
+    var grantBtn = document.getElementById('grant-admin-btn');
+    if (grantBtn) grantBtn.addEventListener('click', function () { setRole(member.id, 'ADMIN'); });
+    var revokeBtn = document.getElementById('revoke-admin-btn');
+    if (revokeBtn) revokeBtn.addEventListener('click', function () { setRole(member.id, 'USER'); });
+  }
 
   function applyFilter() {
     var nameQ = document.getElementById('filter-name').value.trim();
     var from = document.getElementById('filter-from').value;
     var to = document.getElementById('filter-to').value;
+    var adminOnly = document.getElementById('filter-admin-only').checked;
 
     currentList = ALL_MEMBERS.filter(function (m) {
       if (nameQ && (!m.name || m.name.indexOf(nameQ) === -1)) { return false; }
       if (from && m.createdAt < from) { return false; }
       if (to && m.createdAt > to) { return false; }
+      if (adminOnly && m.role !== 'ADMIN') { return false; }
       return true;
     });
     renderRows();
@@ -213,24 +222,24 @@
     document.getElementById('filter-name').value = '';
     document.getElementById('filter-from').value = '';
     document.getElementById('filter-to').value = '';
+    document.getElementById('filter-admin-only').checked = false;
     currentList = ALL_MEMBERS.slice();
+    selectedId = null;
     renderRows();
+    updateActionBar();
   });
 
-  // 어드민 권한 부여/해제 — 체크된 행들의 role을 일괄 변경 후 "어드민" 컬럼 체크박스에 즉시 반영.
-  function bulkSetRole(role) {
-    ALL_MEMBERS.forEach(function (m) {
-      if (selected[m.id]) { m.role = role; }
-    });
-    selected = {};
+  // 어드민 권한 부여/해제 — 선택된 1명의 role만 변경 후 "어드민" 컬럼 체크박스에 즉시 반영.
+  function setRole(id, role) {
+    var member = findMember(id);
+    if (member) { member.role = role; }
+    selectedId = null;
     renderRows();
-    updateBulkBar();
+    updateActionBar();
   }
-  document.getElementById('grant-admin-btn').addEventListener('click', function () { bulkSetRole('ADMIN'); });
-  document.getElementById('revoke-admin-btn').addEventListener('click', function () { bulkSetRole('USER'); });
 
   renderRows();
-  updateBulkBar();
+  updateActionBar();
 })();
 </script>
 </body></html>
