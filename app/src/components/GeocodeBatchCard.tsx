@@ -6,12 +6,15 @@ type GeocodeBatchCardProps = {
   initialNeedsGeocodingCount: number;
 };
 
-type GeocodeResult = {
+type GeocodeApiResult = {
   totalTargeted: number;
+  processedCount: number;
   successCount: number;
   failCount: number;
   remainingCount: number;
   noAddressCount: number;
+  stoppedEarly: string | null;
+  errors: { id: string; name: string; message: string }[];
 };
 
 export default function GeocodeBatchCard({
@@ -38,18 +41,27 @@ export default function GeocodeBatchCard({
         return;
       }
 
-      const result = data as GeocodeResult;
+      const result = data as GeocodeApiResult;
       setPendingCount(result.remainingCount + result.noAddressCount);
+
+      if (result.stoppedEarly) {
+        // 첫 건부터 인증 실패 등으로 배치 자체를 중단한 경우 — 원인을 바로 보여준다.
+        setError(`실행 중단: ${result.stoppedEarly}`);
+        return;
+      }
+
+      const sampleError = result.errors[0]?.message;
       setToast(
         `성공 ${result.successCount}건 · 실패 ${result.failCount}건` +
+          (sampleError ? ` (예: ${sampleError})` : "") +
           (result.remainingCount > 0
-            ? ` (남은 ${result.remainingCount}건은 버튼을 다시 눌러 이어서 처리)`
+            ? ` · 남은 ${result.remainingCount}건은 버튼을 다시 눌러 이어서 처리`
             : "") +
           (result.noAddressCount > 0
             ? ` · 주소 없음 ${result.noAddressCount}건은 대상 제외`
             : "")
       );
-      setTimeout(() => setToast(null), 5000);
+      setTimeout(() => setToast(null), 8000);
     } catch {
       setError("네트워크 오류로 지오코딩 실행에 실패했습니다.");
     } finally {
@@ -85,7 +97,7 @@ export default function GeocodeBatchCard({
       </div>
 
       {toast && (
-        <div className="pointer-events-none absolute left-1/2 top-full z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-primary px-4 py-2.5 text-[12.5px] font-semibold text-white shadow-lg">
+        <div className="pointer-events-none absolute left-1/2 top-full z-20 -translate-x-1/2 max-w-[320px] whitespace-normal rounded-lg bg-primary px-4 py-2.5 text-[12.5px] font-semibold text-white shadow-lg">
           {toast}
         </div>
       )}

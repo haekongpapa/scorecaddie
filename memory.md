@@ -17,6 +17,7 @@
 - **로컬 DB 접근 불가 환경 제약** (재홍님과 논의 완료, 2026-07-22): 이 샌드박스는 재홍님 PC와 분리된 격리 환경이라 `localhost:5432`(Docker든 네이티브 설치든 무관)에 도달 불가, 아웃바운드도 극히 제한적 allowlist(github.com 외 대부분 차단 확인)라 클라우드 DB로 옮겨도 당장은 안 됨 — 실제 DB 동작 검증은 계속 재홍님이 로컬에서 진행하는 방식 유지하기로 확정.
 - **작업 시 필수 규칙**: 이 프로젝트 폴더(`ScoreCaddie`)에 대한 파일 쓰기는 `Edit`/`Write` 툴이 아니라 항상 `mcp__workspace__bash`의 heredoc(`cat > file << 'EOF' ... EOF`)으로 하고, 직후 `wc -c`/`tail`/`grep -cP '\x00'`로 검증할 것(파일이 조용히 잘리거나 변경이 아예 반영 안 되는 마운트 버그가 반복 확인됨 — 8~12번 항목 참고). memory.md·doc/*.md처럼 이미 존재하는 큰 파일을 부분 수정할 때는 python3(`open().read()`→문자열 치환→`open().write()`)로 특정 블록만 교체하는 방식이 안전하고 효율적(전체를 다시 타이핑할 필요 없음, 순수 파일 I/O라 Edit/Write 툴의 truncation 버그와도 무관) — 이번 세션에 확립한 방식.
 - **사용자 커뮤니케이션 선호(2026-07-22)**: 화면 번호를 언급할 때는 항상 화면 명칭을 함께 표기할 것(예: "11번" X → "11번(골프장 Par 관리)" O). 대화뿐 아니라 memory.md/개발리스트.md 등 문서에도 가능하면 이 표기를 유지.
+- **TypeScript 판별 유니언 주의(80번, 2026-07-22)**: `tsconfig.json`이 `strict: false`라 `{ok:true}|{ok:false}` 같은 boolean 판별자 유니언은 `if/else`에서 제대로 안 좁혀짐(narrowing 실패, `tsc` 에러). 성공/실패를 나타내는 타입은 항상 `{lat,lng} | {reason}`처럼 필드 유무로 판별(`"필드명" in 값`)하게 설계할 것 — `lib/weather/kma.ts`(`FetchResult`), `lib/geocoding/kakao.ts`(`GeocodeResult`)가 이 스타일 예시.
 - 세부 이력은 아래 8~79번 항목(시간순 작업 로그)에 모두 기록되어 있음.
 
 ---
@@ -1205,3 +1206,17 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 사용자가 먼저 할 일: Kakao Developers에서 앱 하나 만들고(로그인 설정 없이 그냥 앱 등록만 해도 REST API 키는 발급됨) REST API 키를 `app/.env`의 `KAKAO_REST_API_KEY`에 입력 → 로컬에서 11번(골프장 Par 관리) 화면 열어 "좌표 지오코딩 실행" 버튼 클릭 → 성공/실패 건수와 "위치 확인 중" 골프장이 실제로 줄어드는지 확인. 그 외 남은 화면 밖 작업(README 동기화/카카오 로그인 테스트/하이원CC 자료)은 계속 사용자 지정 대기.
+
+## 80. 지오코딩 안 됨 디버깅 중 tsconfig strict:false discriminated union 버그 발견 (2026-07-22)
+
+- 사용자 보고: "rest api키 입력했는데 작동 좌표값이 업데이트 안되는 것 같음." — 원인 파악을 위해 `lib/geocoding/kakao.ts`/API 라우트에 실패 사유(reason)를 반환하도록 진단 정보를 보강하려다, `{ok:true,...}|{ok:false,reason}` 형태의 판별 유니언(discriminated union)을 쓴 코드에서 `npx tsc --noEmit`이 "Property 'reason' does not exist" 에러를 냄.
+- **원인 규명**: `/tmp`에 최소 재현 코드를 만들어 격리 테스트한 결과, 이 프로젝트 `tsconfig.json`의 `"strict": false`(→ `strictNullChecks`도 꺼짐) 때문에 **boolean 리터럴 판별자(`ok: true`/`ok: false`) 기반 유니언이 `if/else`에서 제대로 좁혀지지(narrowing) 않는 TypeScript 동작**임을 확인(`--strict` 붙이면 정상, 빼면 항상 재현). 79번에서 만든 `kma.ts`의 `FetchResult`는 우연히 `"items" in result`(in 연산자 판별)를 썼던 덕에 이 문제를 안 겪었던 것.
+- **수정**: `GeocodeResult` 타입을 `{lat,lng} | {reason}`으로 바꾸고 `if ("lat" in result)`로 판별하도록 전면 수정(kma.ts와 동일 스타일로 통일). `npx tsc --noEmit` EXIT_CODE=0 재확인.
+- **진단 기능 보강(원래 목적)**: `geocodeAddress()`가 실패 사유를 구체적으로 반환하도록 개선 — 키 미설정/401 인증실패(REST API 키가 아닌 다른 키를 넣은 경우 등)/HTTP 에러/검색결과 없음/네트워크 실패를 구분. 특히 **401이 첫 건부터 나오면 배치를 조기 중단**하고 이유를 명확히 보여줌(키 자체가 잘못됐으면 나머지 건들도 다 실패할 게 뻔하므로). `GeocodeBatchCard.tsx`도 이 정보를 토스트/에러 메시지로 그대로 노출하도록 갱신.
+- **향후 지침(중요)**: 이 프로젝트에서 `{ok:true}|{ok:false}` 같은 boolean 판별자 유니언은 쓰지 말 것 — 항상 `"필드명" in 값` 형태로 판별 가능하게 타입을 설계할 것(`{lat,lng} | {reason}`처럼 성공/실패 케이스의 필드 자체를 다르게 두는 방식). `tsconfig.json`을 `strict: true`로 바꾸는 근본 해결도 가능하지만, 기존 코드 전반에 영향이 커서(다른 곳에서도 non-strict 전제로 작성된 코드가 있을 수 있음) 이번엔 손대지 않음 — 필요해지면 별도 논의.
+- **잔여 이슈**: `app/src/lib/geocoding/_repro.ts`(디버깅용으로 만든 빈 임시 파일)가 삭제 권한 문제로 안 지워져서 빈 주석 한 줄짜리로 남겨둠(tsc에는 영향 없음, 나중에 접근 가능해지면 정리).
+- **아직 못 밝힌 것**: 사용자가 실제로 겪은 "좌표값이 업데이트 안 됨"의 진짜 원인(키 오타/잘못된 키 종류/주소 형식 문제 등)은 여전히 미확인 — 이번엔 진단 정보만 보강했고, 사용자가 개선된 버전으로 다시 실행해 정확한 실패 사유를 알려줘야 다음 조치 가능.
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 11번(골프장 Par 관리) 화면의 "좌표 지오코딩 실행" 버튼을 다시 클릭해 토스트/에러 메시지에 찍히는 구체적 사유를 확인 후 공유. `인증 실패(401)`이면 REST API 키가 아닌 다른 키(JavaScript 키 등)를 넣었을 가능성이 높음 — Kakao Developers 앱 요약 정보에서 "REST API 키" 항목 값을 다시 확인 안내.

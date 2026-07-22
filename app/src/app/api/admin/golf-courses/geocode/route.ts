@@ -37,39 +37,48 @@ export async function POST() {
 
   const noAddressCount = needsGeocoding.filter((c) => !c.address).length;
   const targets = needsGeocoding.filter((c) => c.address).slice(0, BATCH_LIMIT);
-  const remainingCount = needsGeocoding.filter((c) => c.address).length - targets.length;
 
   let successCount = 0;
   let failCount = 0;
+  let processedCount = 0;
+  let stoppedEarly: string | null = null;
   const errors: { id: string; name: string; message: string }[] = [];
 
   for (const course of targets) {
-    const latLng = await geocodeAddress(course.address!);
-    if (latLng) {
+    const result = await geocodeAddress(course.address!);
+    processedCount++;
+
+    if ("lat" in result) {
       await prisma.golfCourse.update({
         where: { id: course.id },
-        data: { latitude: latLng.lat, longitude: latLng.lng, needsGeocoding: false },
+        data: { latitude: result.lat, longitude: result.lng, needsGeocoding: false },
       });
       successCount++;
     } else {
       failCount++;
       if (errors.length < MAX_ERRORS_RETURNED) {
-        errors.push({
-          id: course.id,
-          name: course.name,
-          message: "주소 검색 결과 없음 또는 API 호출 실패",
-        });
+        errors.push({ id: course.id, name: course.name, message: result.reason });
+      }
+      // 첫 건부터 인증 실패면 키 자체가 잘못된 것 — 나머지 전부 시도해봐야 똑같이
+      // 실패할 게 뻔하니 배치를 조기 중단하고 원인을 명확히 알려준다.
+      if (processedCount === 1 && result.reason.includes("인증 실패")) {
+        stoppedEarly = result.reason;
+        break;
       }
     }
     await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
   }
 
+  const remainingCount = needsGeocoding.filter((c) => c.address).length - processedCount;
+
   return NextResponse.json({
     totalTargeted: targets.length,
+    processedCount,
     successCount,
     failCount,
     remainingCount, // 다음 실행에서 이어서 처리될 건수(0이면 전부 처리됨)
     noAddressCount, // 주소 자체가 없어 이번 배치 대상에서 애초에 제외된 건수
+    stoppedEarly, // 인증 실패 등으로 배치를 조기 중단했으면 그 사유(null이면 정상 진행)
     errors,
   });
 }
