@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { DUPLICATE_ROUND_MESSAGE, findDuplicateRound } from "@/lib/round-duplicate";
+import { getWeatherSnapshot } from "@/lib/weather/kma";
 
 const START_TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -58,6 +59,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: DUPLICATE_ROUND_MESSAGE, duplicateRoundId: duplicate.id }, { status: 409 });
   }
 
+  // 라운드 등록 시점에 골프장 좌표 기반 날씨 스냅샷을 한 번 캡처해 고정 기록으로 남긴다
+  // (이후 실제 날씨가 바뀌어도 등록 당시 예보 그대로 유지). 좌표가 없거나(needsGeocoding),
+  // 예보 제공 범위(오늘~+3일) 밖이거나, API 호출 자체가 실패해도 라운드 생성은 막지 않고
+  // weatherSnapshot만 null로 남긴다(fail-soft) — getWeatherSnapshot이 이미 그렇게 동작함.
+  let weatherSnapshot: string | null = null;
+  if (course.latitude !== null && course.longitude !== null) {
+    weatherSnapshot = await getWeatherSnapshot({
+      lat: course.latitude,
+      lng: course.longitude,
+      targetDate: playedAtDate,
+      targetTimeHHMM: startTime,
+    });
+  }
+
   const round = await prisma.round.create({
     data: {
       userId: session.user.id,
@@ -67,6 +82,7 @@ export async function POST(req: Request) {
       holesPlayed,
       frontLoopId,
       backLoopId: holesPlayed === 18 ? backLoopId : null,
+      weatherSnapshot,
     },
   });
 

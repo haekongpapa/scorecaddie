@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export type Step1Loop = { id: string; name: string };
@@ -76,6 +76,37 @@ export default function RoundStep1({
     }
     return `${String(h).padStart(2, "0")}:${minute}`;
   }
+
+  // "라운드 당시 날씨" 카드 — 골프장/일자/출발시간이 바뀔 때마다(400ms 디바운스) 미리보기 재조회.
+  const [weather, setWeather] = useState<{ loading: boolean; label: string | null }>({
+    loading: false,
+    label: null,
+  });
+
+  useEffect(() => {
+    if (!courseId) {
+      setWeather({ loading: false, label: null });
+      return;
+    }
+    let cancelled = false;
+    setWeather((w) => ({ ...w, loading: true }));
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ courseId, date, time: startTime24() });
+        const res = await fetch(`/api/weather/preview?${params.toString()}`);
+        const data = await res.json();
+        if (!cancelled) setWeather({ loading: false, label: data.label ?? null });
+      } catch {
+        if (!cancelled) setWeather({ loading: false, label: null });
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // courseId/date/ampm/hour/minute 변경 시에만 재조회하면 충분(startTime24는 이 값들의 파생값).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId, date, ampm, hour, minute]);
 
   async function goNext() {
     if (!courseId) return;
@@ -284,7 +315,17 @@ export default function RoundStep1({
       <div className="mb-5 flex items-center justify-between rounded-xl bg-card-bg p-3.5">
         <div>
           <div className="text-xs text-muted">라운드 당시 날씨</div>
-          <div className="mt-0.5 text-[10px] text-muted">날씨 연동 준비 중</div>
+          <div
+            className={
+              weather.label
+                ? "mt-0.5 text-[13px] font-semibold"
+                : "mt-0.5 text-[11px] text-muted"
+            }
+          >
+            {weather.loading
+              ? "확인 중..."
+              : weather.label ?? "날씨 정보 없음 (오늘~+3일만 제공)"}
+          </div>
         </div>
       </div>
 
