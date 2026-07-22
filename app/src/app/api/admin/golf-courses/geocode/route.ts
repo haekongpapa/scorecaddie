@@ -31,7 +31,7 @@ export async function POST() {
 
   const needsGeocoding = await prisma.golfCourse.findMany({
     where: { needsGeocoding: true },
-    select: { id: true, name: true, address: true },
+    select: { id: true, name: true, address: true, addressLotno: true },
     orderBy: { name: "asc" },
   });
 
@@ -45,7 +45,9 @@ export async function POST() {
   const errors: { id: string; name: string; message: string }[] = [];
 
   for (const course of targets) {
-    const result = await geocodeAddress(course.address!, course.name);
+    // address(도로명 우선, 없으면 지번) -> 실패 시 addressLotno(지번 원본, address와 다를 때만)
+    // -> 그래도 실패 시 골프장명 키워드 검색, 순서로 폴백한다.
+    const result = await geocodeAddress(course.address!, course.addressLotno, course.name);
     processedCount++;
 
     if ("lat" in result) {

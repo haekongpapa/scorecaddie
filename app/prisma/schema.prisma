@@ -88,7 +88,11 @@ model VerificationToken {
 model GolfCourse {
   id      String @id @default(cuid())
   name    String
+  // 도로명 우선, 없으면 지번(공공데이터 ROAD_NM_ADDR||LOTNO_ADDR) — 화면 노출용 대표 주소.
   address String?
+  // 지번 주소만 별도 보관(공공데이터 LOTNO_ADDR 원본). 화면엔 노출하지 않고, address(도로명)로
+  // 지오코딩 실패 시 재시도용 폴백 주소로만 사용한다. (2026-07-22 신규)
+  addressLotno String?
 
   // WGS84 변환 좌표 (결측 가능 - needsGeocoding 참고)
   latitude  Float?

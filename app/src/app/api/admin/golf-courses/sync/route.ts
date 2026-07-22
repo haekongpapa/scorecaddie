@@ -139,7 +139,10 @@ export async function POST() {
 
       const data = {
         name,
+        // 도로명 우선, 없으면 지번 — 화면 노출용 대표 주소(기존 그대로 유지).
         address: item.ROAD_NM_ADDR?.trim() || item.LOTNO_ADDR?.trim() || null,
+        // 지번 주소 원본은 별도 보관 — 지오코딩 실패 시 재시도용 폴백(2026-07-22 신규).
+        addressLotno: item.LOTNO_ADDR?.trim() || null,
         businessStatus: item.SALS_STTS_NM?.trim() || null,
         subCategory: item.DTIL_TPBIZ_NM?.trim() || null,
         publicPrivate: item.PBP_SE_NM?.trim() || null,

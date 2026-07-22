@@ -12,7 +12,8 @@
   1. `app/README.md`·루트 `README.md`가 구버전 기준으로 멈춰 있음 — 스키마/화면 갱신 내용과 동기화 필요.
   2. 카카오 OAuth 실제 로그인 테스트 — `.env`의 `KAKAO_CLIENT_ID`/`KAKAO_CLIENT_SECRET`이 둘 다 빈 값(로그인용 카카오 앱 자체가 아직 미등록) — 사용자가 Kakao Developers에서 앱 등록/키 발급 후 로컬 테스트 예정(구글 로그인은 완료).
   3. 하이원CC 홀별 Par 자료 미확보(부차 데이터 이슈) — 사용자가 공식 스코어카드 확보 시 재요청 예정.
-  4. **좌표 지오코딩 배치(79번, 2026-07-22)는 코드 구현까지 완료했으나 `.env`의 `KAKAO_REST_API_KEY`가 아직 빈 값** — 사용자가 Kakao Developers에서 REST API 키 발급 후 채워 넣어야 11번 화면 "좌표 지오코딩 실행" 버튼이 실제로 동작(키 없으면 실행 자체를 막고 안내 메시지만 표시). 이 키는 로그인용 `KAKAO_CLIENT_ID`와는 별개라 카카오 로그인이 안 돼 있어도 무관하게 발급받아 쓸 수 있음.
+  4. **좌표 지오코딩(79~82번)은 REST API 키 발급·403 해결까지 실사용 검증 완료.** 82번(2026-07-22)에서 `GolfCourse.addressLotno`(지번 주소 원본) 컬럼을 추가해 도로명→지번→키워드(골프장명) 3단계 폴백으로 개편함 — **사용자 로컬에서 `prisma migrate deploy`+`generate` → 11번(골프장 Par 관리) "골프장 공공 데이터 업로드" 재실행(기존 652개 골프장 `addressLotno` 백필) → "좌표 지오코딩 실행" 재실행, 이 순서로 후속 조치 필요**(82번 항목 참고).
+  5. **환경 팁(82번, 2026-07-22)**: 샌드박스에서 `prisma generate`가 `EPERM: unlink ...client/index-browser.js`로 실패하면, `mv node_modules/.prisma/client node_modules/.prisma/client_old_<ts>`로 기존 디렉터리를 비켜준 뒤 재실행하면 됨(삭제는 막혀있어도 이동은 허용되는 FUSE 마운트 특성 활용) — 이제 스키마 변경 후에도 샌드박스에서 `tsc` 타입 검증까지 가능.
 - **기상청 날씨 API는 77/78번에서 실사용 검증까지 완료**(2026-07-22, `WEATHER_API_KEY` 정상 동작 확인됨) — 더 이상 대기 항목 아님.
 - **로컬 DB 접근 불가 환경 제약** (재홍님과 논의 완료, 2026-07-22): 이 샌드박스는 재홍님 PC와 분리된 격리 환경이라 `localhost:5432`(Docker든 네이티브 설치든 무관)에 도달 불가, 아웃바운드도 극히 제한적 allowlist(github.com 외 대부분 차단 확인)라 클라우드 DB로 옮겨도 당장은 안 됨 — 실제 DB 동작 검증은 계속 재홍님이 로컬에서 진행하는 방식 유지하기로 확정.
 - **작업 시 필수 규칙**: 이 프로젝트 폴더(`ScoreCaddie`)에 대한 파일 쓰기는 `Edit`/`Write` 툴이 아니라 항상 `mcp__workspace__bash`의 heredoc(`cat > file << 'EOF' ... EOF`)으로 하고, 직후 `wc -c`/`tail`/`grep -cP '\x00'`로 검증할 것(파일이 조용히 잘리거나 변경이 아예 반영 안 되는 마운트 버그가 반복 확인됨 — 8~12번 항목 참고). memory.md·doc/*.md처럼 이미 존재하는 큰 파일을 부분 수정할 때는 python3(`open().read()`→문자열 치환→`open().write()`)로 특정 블록만 교체하는 방식이 안전하고 효율적(전체를 다시 타이핑할 필요 없음, 순수 파일 I/O라 Edit/Write 툴의 truncation 버그와도 무관) — 이번 세션에 확립한 방식.
@@ -1234,3 +1235,24 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 사용자가 로컬에서 11번(골프장 Par 관리) "좌표 지오코딩 실행" 재실행 → 이전에 "검색 결과 없음"이었던 연습장/컨트리클럽류가 키워드 검색 폴백으로 성공하는지, 그래도 실패하는 게 있으면 어떤 사유인지 확인. 남은 화면 밖 작업(README 동기화/카카오 로그인 테스트/하이원CC 자료)은 계속 사용자 지정 대기.
+
+## 82. 지오코딩 근본 원인 해결 — 도로명/지번 주소 분리 보관 + 3단계 폴백 (2026-07-22)
+
+81번의 키워드 검색 폴백은 증상 대응이었음. 사용자가 "근본적으로 해결하자"며 공공데이터 API가 이미 `ROAD_NM_ADDR`(도로명)/`LOTNO_ADDR`(지번) 두 필드를 따로 제공한다는 점에 착안 — 도로명 검색이 실패해도 지번으로 재시도할 수 있도록 원본을 분리 보관하자는 제안.
+
+- **설계 논의**: 처음엔 `address`=도로명 전용, `address_lotno`=지번 전용으로 완전히 분리하는 안을 검토했으나, `address`가 이미 8개 파일(코스 검색/상세, 관리자 리스트 등)에서 화면 노출용으로 쓰이고 있어 도로명이 없는 골프장(연습장류)은 주소가 빈 값으로 보이는 회귀가 생김을 확인 → **`address`는 기존 그대로(도로명 우선, 없으면 지번) 유지**하고 `addressLotno`(지번 원본)만 신규 추가하는 안으로 확정(화면 8곳 무변경). 사용자가 추가로 "addressLotno가 address와 같은 값이면(=애초에 도로명이 없어 address가 이미 지번이었던 경우) 재조회하지 말고 바로 키워드 검색으로" 제안, 그대로 반영.
+- **스키마**: `GolfCourse.addressLotno String?` 추가. 마이그레이션 `app/prisma/migrations/20260722060000_add_golf_course_address_lotno/migration.sql`(`ALTER TABLE "GolfCourse" ADD COLUMN "addressLotno" TEXT;`) 수기 작성(샌드박스 DB 접근 불가로 여전히 `prisma migrate dev` 실행 불가).
+- **동기화**: `api/admin/golf-courses/sync/route.ts`의 upsert `data`에 `addressLotno: item.LOTNO_ADDR?.trim() || null` 추가(`address` 계산 로직은 무변경).
+- **지오코딩 로직 개편**: `lib/geocoding/kakao.ts`의 `geocodeAddress` 시그니처를 `(address, addressLotno?, fallbackKeyword?)`로 변경, 3단계 폴백: ① `address`(도로명 우선값)로 주소 검색 → ② 실패 시 `addressLotno`가 있고 `address`와 값이 다를 때만 주소 검색 재시도 → ③ 그래도 실패하면 골프장명으로 키워드 검색(81번에서 만든 기존 폴백 유지). 인증/권한/네트워크류 실패("검색 결과 없음"이 아닌 사유)는 어느 단계든 즉시 반환(다음 후보로 안 넘어감) — `isHardFailure()` 헬퍼로 판별. `api/admin/golf-courses/geocode/route.ts`는 `select`에 `addressLotno` 추가하고 호출부만 `geocodeAddress(course.address!, course.addressLotno, course.name)`로 변경.
+- **환경 이슈 해결책 발견(재사용 가능)**: `npx tsc --noEmit`이 처음엔 `addressLotno` 관련 타입 에러 2건 발생 — Prisma Client가 스키마 변경 전 상태로 캐시돼 있었음. `npx prisma generate`를 바로 실행하면 기존 세션들처럼 `EPERM: unlink 'node_modules/.prisma/client/index-browser.js'`로 실패(마운트 FUSE의 파일 삭제 권한 문제, 8~12번 항목에서 git lock 파일 삭제 불가 문제와 동일 원인). **해결**: git 워크어라운드와 같은 원리로, 삭제(unlink) 대신 이동(rename)은 허용됨 — `mv node_modules/.prisma/client node_modules/.prisma/client_old_<timestamp>` 로 기존 디렉터리를 비켜준 뒤 `npx prisma generate` 실행하면 정상적으로 새로 생성됨. 이번부터 **샌드박스에서도 스키마 변경 후 `prisma generate`로 타입까지 검증 가능** — 기존에 "Prisma client 미생성은 샌드박스 환경 자체의 기존 이슈"로 넘어가던 관행(예: 563번 항목)을 이 방법으로 개선 가능. 이후 `npx tsc --noEmit` EXIT_CODE=0 확인.
+- **문서 갱신**: `doc/개발리스트.md` "좌표 결측 지오코딩 배치" 행 갱신.
+
+### 사용자 로컬 후속 조치 필요 (중요 — 순서대로)
+
+1. `git pull` 후 `npx prisma migrate deploy` + `npx prisma generate` 실행 (스키마에 `addressLotno` 반영).
+2. 11번(골프장 Par 관리) 화면에서 **"골프장 공공 데이터 업로드"(sync) 재실행** — 기존 652개 골프장은 `addressLotno`가 아직 null이라, 재동기화해야 지번 주소가 채워짐(재실행해도 기존 데이터는 upsert라 안전).
+3. 그 다음 "좌표 지오코딩 실행" 재실행 — 이전에 "검색 결과 없음"이었던 건들이 지번 재시도/키워드 폴백으로 해결되는지 확인.
+
+### 다음 세션 시작 시
+
+- 위 3단계(마이그레이션 → 재동기화 → 지오코딩 재실행) 결과를 사용자에게 확인. 여전히 실패하는 골프장이 있으면 사유(errors 배열) 확인 후 추가 대응. 남은 화면 밖 작업(README 동기화/카카오 로그인 테스트/하이원CC 자료)은 계속 사용자 지정 대기.
