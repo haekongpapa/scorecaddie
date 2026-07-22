@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import TopBar from "@/components/TopBar";
 import NavBar from "@/components/NavBar";
 import PublicDataSyncCard from "@/components/PublicDataSyncCard";
+import GeocodeBatchCard from "@/components/GeocodeBatchCard";
 import GolfCourseAdminList, {
   type AdminCourseRow,
 } from "@/components/GolfCourseAdminList";
@@ -47,6 +48,10 @@ export default async function AdminGolfCoursesPage() {
     },
   });
 
+  const needsGeocodingCount = await prisma.golfCourse.count({
+    where: { needsGeocoding: true },
+  });
+
   const rows: AdminCourseRow[] = courses.map((course) => {
     const loopNames = course.loops.map((l) => l.name);
     const filledHoles = course.loops.reduce((sum, l) => sum + l.holes.length, 0);
@@ -80,6 +85,8 @@ export default async function AdminGolfCoursesPage() {
           latestSynced ? formatDateTime(latestSynced.updatedAt) : null
         }
       />
+
+      <GeocodeBatchCard initialNeedsGeocodingCount={needsGeocodingCount} />
 
       <a
         href="/admin/golf-courses/upload"
