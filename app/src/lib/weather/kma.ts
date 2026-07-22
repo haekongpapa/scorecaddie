@@ -97,6 +97,29 @@ export function isWithinForecastRange(
   return diffDays >= 0 && diffDays <= FORECAST_MAX_DAYS_AHEAD;
 }
 
+type FetchResult = { items: ForecastItem[] } | { error: string };
+
+async function fetchOnce(url: URL): Promise<FetchResult> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) return { error: `http_${res.status}` };
+    const data = (await res.json()) as ApiResponse;
+    const resultCode = data.response?.header?.resultCode;
+    if (resultCode !== "00") return { error: `resultCode_${resultCode ?? "unknown"}` };
+    const items = data.response?.body?.items;
+    if (!items) return { items: [] };
+    const item = items.item;
+    if (!item) return { items: [] };
+    return { items: Array.isArray(item) ? item : [item] };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "unknown_error" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchForecastItems(
   nx: number,
   ny: number,
@@ -116,23 +139,16 @@ async function fetchForecastItems(
   url.searchParams.set("nx", String(nx));
   url.searchParams.set("ny", String(ny));
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { signal: controller.signal });
-    if (!res.ok) return [];
-    const data = (await res.json()) as ApiResponse;
-    if (data.response?.header?.resultCode !== "00") return [];
-    const items = data.response?.body?.items;
-    if (!items) return [];
-    const item = items.item;
-    if (!item) return [];
-    return Array.isArray(item) ? item : [item];
-  } catch {
-    return [];
-  } finally {
-    clearTimeout(timeout);
+  // 실사용 확인 결과(2026-07-22) data.go.kr 쪽에서 간헐적으로 일시 오류/빈 응답이 오는 경우가
+  // 있어(동일 입력을 잠시 후 재요청하면 정상 성공) 짧게 대기 후 1회만 재시도한다. 그래도
+  // 실패하면 포기(fail-soft — 상위 getWeatherSnapshot이 null로 처리).
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await fetchOnce(url);
+    if ("items" in result) return result.items;
+    console.warn(`[weather] getVilageFcst 호출 실패(시도 ${attempt + 1}/2): ${result.error}`);
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 500));
   }
+  return [];
 }
 
 // PTY(강수형태)/SKY(하늘상태) 코드를 사람이 읽는 아이콘+텍스트로 변환.
