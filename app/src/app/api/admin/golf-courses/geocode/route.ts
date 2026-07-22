@@ -42,7 +42,16 @@ export async function POST() {
   let failCount = 0;
   let processedCount = 0;
   let stoppedEarly: string | null = null;
-  const errors: { id: string; name: string; message: string }[] = [];
+  // address/addressLotno도 함께 반환 — DB에 직접 접근하지 않고도 어떤 문자열이 카카오로
+  // 전달됐는지 바로 확인할 수 있어야 잔여 실패 건 진단이 빠름(2026-07-22, 9건 잔여 실패
+  // 디버깅 중 추가).
+  const errors: {
+    id: string;
+    name: string;
+    message: string;
+    address: string;
+    addressLotno: string | null;
+  }[] = [];
 
   for (const course of targets) {
     // address(도로명 우선, 없으면 지번) -> 실패 시 addressLotno(지번 원본, address와 다를 때만)
@@ -59,7 +68,13 @@ export async function POST() {
     } else {
       failCount++;
       if (errors.length < MAX_ERRORS_RETURNED) {
-        errors.push({ id: course.id, name: course.name, message: result.reason });
+        errors.push({
+          id: course.id,
+          name: course.name,
+          message: result.reason,
+          address: course.address!,
+          addressLotno: course.addressLotno,
+        });
       }
       // 첫 건부터 인증/권한 실패면 키·앱 설정 자체가 잘못된 것 — 나머지 전부 시도해봐야
       // 똑같이 실패할 게 뻔하니 배치를 조기 중단하고 원인을 명확히 알려준다.
