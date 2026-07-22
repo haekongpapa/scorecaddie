@@ -10,7 +10,7 @@ import authConfig from "@/auth.config";
 // 별도 가벼운 인스턴스를 사용한다(src/middleware.ts 참고).
 //
 // PrismaAdapter는 세션 저장 방식을 바꾸지 않는다(session.strategy는 여전히
-// authConfig의 "jwt"를 그대로 따름) — 다만 구글/카카오 같은 OAuth 로그인 시
+// authConfig의 "jwt"를 그대로 따름) — 다만 구글 같은 OAuth 로그인 시
 // User/Account 레코드를 자동으로 생성·연결해줘서, session.user.id가 실제
 // 우리 DB의 User.id(cuid)와 일치하도록 만들어준다. 어댑터가 없으면 OAuth
 // 로그인은 "인증"은 되어도 우리 User 테이블과 연결되지 않아 대시보드/마이페이지 등

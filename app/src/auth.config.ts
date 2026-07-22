@@ -1,6 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
-import Kakao from "next-auth/providers/kakao";
 
 // Edge 런타임(미들웨어)에서도 안전하게 쓸 수 있는 최소 설정.
 // Credentials provider(bcrypt+Prisma 사용)는 여기 포함하지 않는다 —
@@ -12,10 +11,6 @@ export default {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
-    Kakao({
-      clientId: process.env.KAKAO_CLIENT_ID,
-      clientSecret: process.env.KAKAO_CLIENT_SECRET,
     }),
   ],
   pages: {
