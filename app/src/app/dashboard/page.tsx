@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { formatRoundDateTimeLabel } from "@/lib/round-format";
 import NavBar from "@/components/NavBar";
 import RoundListItem from "@/components/RoundListItem";
 import TopBar from "@/components/TopBar";
@@ -109,10 +110,7 @@ export default async function DashboardPage() {
                 key={round.id}
                 href={`/rounds/${round.id}`}
                 title={round.golfCourse.name}
-                sub={round.playedAt
-                  .toISOString()
-                  .slice(0, 10)
-                  .replace(/-/g, ".")}
+                sub={formatRoundDateTimeLabel(round.playedAt, round.startTime)}
                 value={`${totalStrokes}타`}
               />
             );

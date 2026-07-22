@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { formatRoundDateLabel, formatStartTimeLabel } from "@/lib/round-format";
 import TopBar from "@/components/TopBar";
 import NavBar from "@/components/NavBar";
 import RoundDetailMatrix, { type HoleRow } from "@/components/RoundDetailMatrix";
@@ -69,17 +70,10 @@ export default async function RoundDetailPage({
   const totalScore = round.holeScores.reduce((sum, hs) => sum + hs.strokes, 0);
   const hasAnyScore = round.holeScores.length > 0;
 
-  const dateLabel = round.playedAt.toISOString().slice(0, 10).replace(/-/g, ".");
+  const dateLabel = formatRoundDateLabel(round.playedAt);
   const weatherLabel = round.weatherSnapshot ?? "날씨 정보 없음";
-  const startTimeLabel = (() => {
-    if (!round.startTime) return null;
-    const [hStr, mStr] = round.startTime.split(":");
-    let h = Number(hStr);
-    const ampm = h < 12 ? "오전" : "오후";
-    if (h === 0) h = 12;
-    else if (h > 12) h -= 12;
-    return `${ampm} ${String(h).padStart(2, "0")}:${mStr} 출발`;
-  })();
+  const startTimeBaseLabel = formatStartTimeLabel(round.startTime);
+  const startTimeLabel = startTimeBaseLabel ? `${startTimeBaseLabel} 출발` : null;
 
   return (
     <main className="mx-auto min-h-screen max-w-md p-5 pb-24">

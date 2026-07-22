@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { summarizeAddress, groupPublicPrivate } from "@/lib/course-format";
+import { formatRoundDateTimeLabel } from "@/lib/round-format";
 import TopBar from "@/components/TopBar";
 import NavBar from "@/components/NavBar";
 import RoundListItem from "@/components/RoundListItem";
@@ -87,10 +88,7 @@ export default async function CourseDetailPage({
               <RoundListItem
                 key={round.id}
                 href={`/rounds/${round.id}`}
-                title={round.playedAt
-                  .toISOString()
-                  .slice(0, 10)
-                  .replace(/-/g, ".")}
+                title={formatRoundDateTimeLabel(round.playedAt, round.startTime)}
                 value={`${totalStrokes}타`}
               />
             );
