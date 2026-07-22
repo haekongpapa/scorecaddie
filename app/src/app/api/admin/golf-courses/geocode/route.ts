@@ -45,7 +45,7 @@ export async function POST() {
   const errors: { id: string; name: string; message: string }[] = [];
 
   for (const course of targets) {
-    const result = await geocodeAddress(course.address!);
+    const result = await geocodeAddress(course.address!, course.name);
     processedCount++;
 
     if ("lat" in result) {
@@ -59,9 +59,12 @@ export async function POST() {
       if (errors.length < MAX_ERRORS_RETURNED) {
         errors.push({ id: course.id, name: course.name, message: result.reason });
       }
-      // 첫 건부터 인증 실패면 키 자체가 잘못된 것 — 나머지 전부 시도해봐야 똑같이
-      // 실패할 게 뻔하니 배치를 조기 중단하고 원인을 명확히 알려준다.
-      if (processedCount === 1 && result.reason.includes("인증 실패")) {
+      // 첫 건부터 인증/권한 실패면 키·앱 설정 자체가 잘못된 것 — 나머지 전부 시도해봐야
+      // 똑같이 실패할 게 뻔하니 배치를 조기 중단하고 원인을 명확히 알려준다.
+      if (
+        processedCount === 1 &&
+        (result.reason.includes("인증 실패") || result.reason.includes("권한 없음"))
+      ) {
         stoppedEarly = result.reason;
         break;
       }
