@@ -10,10 +10,6 @@
 //      보조로 시도. 골프연습장/컨트리클럽처럼 주소 자체가 비정형인 경우, 카카오맵에 등록된
 //      장소명으로는 오히려 잘 찾히는 경우가 많음.
 //
-// 주소 검색(①②) 단계에는 실제로 쿼리를 보내기 직전에 normalizeForKakao()로 두 가지 알려진
-// 패턴을 교정한다(2026-07-22, 잔여 실패 9건 중 7건이 "산 " 공백, 2건이 "전남광주통합특별시"
-// 신설 지명 문제로 확인됨 — 상세 사유는 normalizeForKakao() 주석 참고).
-//
 // 인증/권한 관련 실패(401/403/네트워크 오류)는 재시도해도 똑같이 실패할 게 뻔하므로,
 // 그 단계에서 즉시 중단하고 다음 후보로 넘어가지 않는다 — "검색 결과 없음"일 때만 다음
 // 후보로 이어간다.
@@ -25,6 +21,16 @@
 // 반드시 "REST API 키"를 써야 한다(다른 키는 401). 또한 앱의 [제품 설정] > [카카오맵]이
 // "활성화"로 켜져있어야 한다 — 꺼져있으면 403 "disabled OPEN_MAP_AND_LOCAL service"로
 // 실패한다(2026-07-22 실사용 중 발견, 흔한 최초 설정 누락 포인트).
+//
+// 주의(2026-07-22): "산 5" 공백 표기 / "전남광주통합특별시" 신지명 문제가 원인일 것으로
+// 추정해 정규화 로직(normalizeForKakao)을 한 차례 추가했었으나, 사용자가 map.kakao.com에서
+// 직접 검색해 두 가설 모두 틀렸음을 확인 — 카카오는 "산 5"(공백 있어도)도, "전남광주통합
+// 특별시"도 정상적으로 인식했고, 실제로는 "유사 주소"로 다른 지번(예: 산 5 -> 산 5-2, 산
+// 118번지 -> 산 113-4)을 제안했다. 즉 진짜 원인은 공공데이터(LOTNO_ADDR)와 카카오맵에
+// 등록된 실제 지번이 서로 다른 것 — 데이터 소스 간 불일치이며 주소 문자열 포맷을 코드로
+// 교정해서 해결할 수 있는 문제가 아니다(정규화 로직은 되돌림, memory.md 85번 참고).
+// 카카오 REST API(search/address.json)는 사이트 검색과 달리 "유사 주소" 퍼지 매칭을
+// 제공하지 않아 정확히 일치해야 결과가 나온다.
 //
 // 응답에서 x=경도(longitude), y=위도(latitude) — 카카오 특유의 순서라 헷갈리기 쉬우니 주의.
 const ADDRESS_API_URL = "https://dapi.kakao.com/v2/local/search/address.json";
@@ -41,34 +47,6 @@ export type GeocodeResult = LatLng | { reason: string };
 
 type KakaoDoc = { x: string; y: string };
 type KakaoResponse = { documents?: KakaoDoc[] };
-
-// 카카오 주소 검색으로 보내기 전 주소 문자열을 정규화한다. 82번 개편 후에도 남아있던 9건의
-// 잔여 실패를 실제 address/addressLotno 값으로 확인해 찾아낸 두 가지 패턴을 교정(2026-07-22):
-//
-// 1) "산 5" -> "산5": 지번주소 표기법상 "산"은 번지 앞에 붙는 접두사이지 별도 단어가
-//    아님(공식 표기는 공백 없이 "산5-1"). 공공데이터 원본엔 공백이 섞여 들어오는 경우가
-//    있고("경상북도 경주시 신평동 산 5"), 카카오 주소 검색은 이 공백이 있으면 매칭을
-//    못 하는 것으로 보임(잔여 실패 9건 중 7건이 이 패턴).
-// 2) "전남광주통합특별시" -> "광주광역시"/"전라남도": 2026-07-01 광주광역시+전라남도 통합으로
-//    신설된 광역자치단체명. 공공데이터는 이미 새 지명을 쓰지만, 카카오 로컬 API의 주소
-//    인덱스는 아직(2026-07-22 기준) 갱신 전이라 새 지명으로는 검색이 안 됨(웹 검색으로
-//    통합 시점 확인) — 카카오가 인식하는 옛 지명으로 되돌려서 질의한다. 광주 5개
-//    구(동/서/남/북/광산구)는 "광주광역시", 그 외 시/군은 "전라남도"였던 지역.
-//    ※ 카카오가 자체 인덱스를 갱신하면 이 보정은 불필요해짐 — 향후 재실패 시 가장 먼저
-//    의심할 부분.
-function normalizeForKakao(raw: string): string {
-  let s = raw.trim();
-
-  s = s.replace(/산\s+(\d)/g, "산$1");
-
-  if (s.startsWith("전남광주통합특별시")) {
-    const rest = s.slice("전남광주통합특별시".length).trim();
-    const isGwangjuGu = /^(동구|서구|남구|북구|광산구)/.test(rest);
-    s = `${isGwangjuGu ? "광주광역시" : "전라남도"} ${rest}`;
-  }
-
-  return s;
-}
 
 async function callKakaoLocal(
   apiUrl: string,
@@ -134,7 +112,7 @@ export async function geocodeAddress(
   if (!key) return { reason: "KAKAO_REST_API_KEY 미설정" };
   if (!address.trim()) return { reason: "주소 값이 비어있음" };
 
-  const primaryResult = await callKakaoLocal(ADDRESS_API_URL, normalizeForKakao(address), key);
+  const primaryResult = await callKakaoLocal(ADDRESS_API_URL, address, key);
   if ("lat" in primaryResult) return primaryResult;
   if (isHardFailure(primaryResult.reason)) return primaryResult;
 
@@ -144,7 +122,7 @@ export async function geocodeAddress(
   const shouldTryLotno = lotno && lotno !== address.trim();
   if (shouldTryLotno) {
     await new Promise((resolve) => setTimeout(resolve, BETWEEN_ATTEMPT_DELAY_MS));
-    const lotnoResult = await callKakaoLocal(ADDRESS_API_URL, normalizeForKakao(lotno), key);
+    const lotnoResult = await callKakaoLocal(ADDRESS_API_URL, lotno, key);
     if ("lat" in lotnoResult) return lotnoResult;
     if (isHardFailure(lotnoResult.reason)) return lotnoResult;
     lastAddressReason = "도로명·지번 주소 검색 모두 결과 없음(주소 형식을 카카오가 못 찾음)";
