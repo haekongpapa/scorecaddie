@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { DUPLICATE_ROUND_MESSAGE, findDuplicateRound } from "@/lib/round-duplicate";
+import { DUPLICATE_ROUND_MESSAGE, findDuplicateRound } from "@/lib/services/round-duplicate";
 import { getWeatherSnapshot } from "@/lib/weather/kma";
 
 const START_TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;

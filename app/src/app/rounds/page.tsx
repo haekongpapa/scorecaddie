@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { formatRoundDateTimeLabel } from "@/lib/round-format";
+import { formatRoundDateTimeLabel } from "@/lib/utils/round-format";
 import TopBar from "@/components/TopBar";
 import NavBar from "@/components/NavBar";
 import RoundSearchList, {

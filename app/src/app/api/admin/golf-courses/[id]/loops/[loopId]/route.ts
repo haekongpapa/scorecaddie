@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-api";
+import { requireAdminSession } from "@/lib/services/admin-api";
 
 // 루프가 실제로 이 골프장 소속인지 방어적으로 확인(다른 골프장 id로 조작 접근 방지).
 async function findOwnedLoop(golfCourseId: string, loopId: string) {

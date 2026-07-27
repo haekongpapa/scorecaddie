@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-api";
-import { parseCsv } from "@/lib/csv";
+import { requireAdminSession } from "@/lib/services/admin-api";
+import { parseCsv } from "@/lib/services/csv";
 
 // 13번 화면 "업로드 및 처리" — 로직 상세는 doc/admin-csv-upload.md 참고.
 // CSV 포맷: 골프장명,루프명,홀번호,Par (첫 행 헤더, 홀번호 1~9, Par 3/4/5)

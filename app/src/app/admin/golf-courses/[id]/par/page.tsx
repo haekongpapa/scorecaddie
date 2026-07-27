@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { summarizeAddress } from "@/lib/course-format";
+import { summarizeAddress } from "@/lib/utils/course-format";
 import TopBar from "@/components/TopBar";
 import NavBar from "@/components/NavBar";
 import GolfCourseParEditor, {

@@ -1386,3 +1386,22 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 1단계 로컬 동작 확인 결과를 받으면 2단계(lib/ 폴더 재정리, import 약 45곳)로 진행. 3단계(API route try/catch 보강)부터는 다시 한번 위험 요소를 안내하고 진행. 4단계(무거운 route 리팩터링)는 보류 권장 상태 유지, 사용자가 명시적으로 원할 때만 진행.
+
+
+## 92. coding-guidelines.md 적용 1단계 로컬 확인 + 2단계(lib 폴더 재정리) 완료 (2026-07-27)
+
+**1단계 후속 확인**: 사용자가 로컬에서 로그인·골프장 조회·날씨 조회 정상 동작 확인 완료 — `lib/config/env.ts` 도입이 런타임에 문제없음 확정.
+
+**2단계**: `lib/` 하위 평면 구조를 coding-guidelines.md §2 기준으로 재정리.
+
+- **이동(6개 파일)**: `mv`로 실제 파일 이동(삭제 후 재생성이 아니라 rename — 이 프로젝트 마운트가 unlink/overwrite는 막혀있어도 신규 경로로의 rename은 허용되는 특성을 활용, 8~12번 항목의 workaround와 동일 원리).
+  - `lib/utils/`로: `geo.ts`(TM→WGS84 변환), `round-format.ts`(날짜/시간 라벨), `course-format.ts`(주소 요약)
+  - `lib/services/`로: `round-duplicate.ts`(중복 라운드 검사), `csv.ts`(CSV 파싱), `admin-api.ts`(관리자 세션 체크)
+  - **이동 안 함**: `lib/prisma.ts`(DB 클라이언트 자체, 재배치 실익 없음), `lib/weather/`, `lib/geocoding/`(이미 도메인별 하위 폴더로 잘 구성돼 있어 그대로 유지)
+- **import 경로 수정**: 총 16개 파일, 18개 import 구문을 python3 스크립트로 일괄 치환(`@/lib/geo`→`@/lib/utils/geo` 등 6개 패턴). 이동 대상 파일 자체의 내부 import는 전부 `@/` 절대경로라 이동 후에도 안 깨짐(상대경로 import가 있었다면 별도 수정 필요했을 것).
+- **검증**: 이동 전 `grep`으로 구 경로 참조 남은 곳 0건, 새 경로 참조 18건(예상치와 일치) 확인. `npx tsc --noEmit` EXIT_CODE=0(클린).
+- **위험도**: 순수 파일 위치 이동 + import 경로 치환이라 로직 변경 없음 — 런타임 동작에 영향 없을 것으로 판단(1단계보다 낮은 위험).
+
+### 다음 세션 시작 시
+
+- 3단계(API route try/catch 보강, 위험도 중~높음)로 진행 예정 — 회원가입/비밀번호변경/관리자 루프 삭제/지오코딩 등 13개 route.ts 대상. 진행 전 다시 한번 위험 요소 안내 필요.

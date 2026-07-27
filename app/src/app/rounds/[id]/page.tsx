@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { formatRoundDateLabel, formatStartTimeLabel } from "@/lib/round-format";
+import { formatRoundDateLabel, formatStartTimeLabel } from "@/lib/utils/round-format";
 import TopBar from "@/components/TopBar";
 import NavBar from "@/components/NavBar";
 import RoundDetailMatrix, { type HoleRow } from "@/components/RoundDetailMatrix";

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { DUPLICATE_ROUND_MESSAGE, findDuplicateRound } from "@/lib/round-duplicate";
+import { DUPLICATE_ROUND_MESSAGE, findDuplicateRound } from "@/lib/services/round-duplicate";
 
 // 7-1번 화면 "스코어 카드" 버튼 클릭 시 Step2로 넘어가기 전에 미리 확인 — 이미 동일한
 // 골프장·일자·출발 시간으로 등록된 라운드가 있으면 Step2 진입 자체를 막아 더블 등록을 방지한다.

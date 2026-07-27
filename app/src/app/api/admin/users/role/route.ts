@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-api";
+import { requireAdminSession } from "@/lib/services/admin-api";
 
 // 14번 화면 일괄 액션 바("어드민 권한 부여"/"어드민 권한 해제").
 // 정책(2026-07-21 확정): 본인 계정의 어드민 권한 자가 해제는 서버에서 차단한다 —

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-api";
+import { requireAdminSession } from "@/lib/services/admin-api";
 
 // 12번 화면 "+ 루프 추가" — 새 루프를 해당 골프장의 마지막 sortOrder 다음 순번으로 생성.
 export async function POST(

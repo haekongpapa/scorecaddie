@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-api";
+import { requireAdminSession } from "@/lib/services/admin-api";
 
 const VALID_PARS = [3, 4, 5];
 

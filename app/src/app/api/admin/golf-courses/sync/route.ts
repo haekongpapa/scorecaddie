@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { convertTmToWgs84 } from "@/lib/geo";
+import { convertTmToWgs84 } from "@/lib/utils/geo";
 import { env } from "@/lib/config/env";
 
 // 골프장 공공 데이터 업로드 (11번 화면 "골프장 공공 데이터 업로드" 버튼)

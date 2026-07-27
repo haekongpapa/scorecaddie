@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { formatRoundDateTimeLabel } from "@/lib/round-format";
+import { formatRoundDateTimeLabel } from "@/lib/utils/round-format";
 import NavBar from "@/components/NavBar";
 import RoundListItem from "@/components/RoundListItem";
 import TopBar from "@/components/TopBar";

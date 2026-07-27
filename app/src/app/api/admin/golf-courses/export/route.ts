@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-api";
+import { requireAdminSession } from "@/lib/services/admin-api";
 
 // DB에 실제로 저장된 골프장별 루프·홀 Par 데이터를 13번(CSV 일괄 업로드)과 동일한
 // 포맷(골프장명,루프명,홀번호,Par — doc/admin-csv-upload.md 참고)으로 내보낸다.

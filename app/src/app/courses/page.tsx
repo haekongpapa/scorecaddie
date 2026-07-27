@@ -6,7 +6,7 @@ import NavBar from "@/components/NavBar";
 import CourseSearchList, {
   type CourseRow,
 } from "@/components/CourseSearchList";
-import { summarizeAddress, groupPublicPrivate } from "@/lib/course-format";
+import { summarizeAddress, groupPublicPrivate } from "@/lib/utils/course-format";
 
 export default async function CoursesPage() {
   const session = await auth();

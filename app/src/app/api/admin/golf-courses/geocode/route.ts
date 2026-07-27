@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-api";
+import { requireAdminSession } from "@/lib/services/admin-api";
 import { geocodeAddress } from "@/lib/geocoding/kakao";
 import { env } from "@/lib/config/env";
 
