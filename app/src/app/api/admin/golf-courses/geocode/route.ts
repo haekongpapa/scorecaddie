@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/admin-api";
 import { geocodeAddress } from "@/lib/geocoding/kakao";
+import { env } from "@/lib/config/env";
 
 // 11번 관리자 화면 "좌표 지오코딩 실행" 버튼 — 공공데이터에 원본 좌표가 아예 없었던(rawCoordX/Y
 // 없음 또는 변환 결과 이상치) 골프장(GolfCourse.needsGeocoding=true)을 대상으로 주소 기반
@@ -19,7 +20,7 @@ export async function POST() {
   const { errorResponse } = await requireAdminSession();
   if (errorResponse) return errorResponse;
 
-  if (!process.env.KAKAO_REST_API_KEY) {
+  if (!env.kakaoRestApiKey) {
     return NextResponse.json(
       {
         error:

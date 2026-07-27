@@ -1371,3 +1371,18 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 지침 문서 체계(memory.md ↔ coding-guidelines.md 역할 분리 + 참조 포인터)는 이제 확정 및 문서화 완료. 실제 코드 작성 시 coding-guidelines.md를 반영하는 것은 이후 실제 구현 작업 때부터 자연스럽게 적용하면 됨. 그 외 남은 화면 밖 작업(README 동기화/배포 스택 실제 착수/하이원CC 자료), doc 폴더에 남아있는 배포방안 검토 PPT 중복본(v1/v2) 정리 여부도 계속 사용자 지정 대기. (2026-07-27 같은 날 후속 확인: 사용자가 로컬에서 `git push` 완료, `origin/main`과 동기화됨 — 84c07fa~ec3929e 4개 커밋 전부 반영.)
+
+
+## 91. coding-guidelines.md 적용 1단계 — lib/config/env.ts 신설 (2026-07-27)
+
+사용자 요청: "coding-guidelines.md 기준으로 기존 소스를 변경해줘, 심각한 영향 주는 부분은 먼저 알려줘, 한꺼번에 말고 단계별로." → 적용 전 실태 조사(서브에이전트) 결과 any/console.log/strict/discriminated union은 이미 100% 가이드 준수 상태임을 확인, 실제 변경 필요 항목을 1~6단계로 나눠 제시하고 위험도를 표시(특히 4단계=무거운 route 로직 위임은 보류 권장) → 사용자가 "1단계부터 순서대로" 진행 확정.
+
+- **신규 파일**: `app/src/lib/config/env.ts` — `process.env.*` 접근을 한 곳에 모은 창구. `env.{nodeEnv,databaseUrl,googleClientId,googleClientSecret,kakaoRestApiKey,weatherApiKey,publicDataApiKey}` 7개 값 재노출.
+- **중요 설계 제약**: `auth.config.ts`는 Edge 런타임에서 로드되는 파일(파일 상단 기존 주석에 명시)이라 Node 전용 모듈을 import하면 안 됨 — `env.ts`는 그래서 다른 모듈을 일절 import하지 않고 순수하게 `process.env` 값만 읽어 재노출하도록 작성(다른 lib를 import했다면 Edge 번들링이 깨질 뻔한 사안이라 사전에 특별히 신경 씀).
+- **변경 파일 7개**(process.env 직접 참조 제거, `env` import로 교체): `auth.config.ts`(GOOGLE_CLIENT_ID/SECRET), `lib/prisma.ts`(DATABASE_URL, NODE_ENV — 기존 dev 환경 globalThis 캐싱 로직은 그대로 유지), `lib/geocoding/kakao.ts`(KAKAO_REST_API_KEY), `api/admin/golf-courses/geocode/route.ts`(KAKAO_REST_API_KEY), `api/admin/golf-courses/sync/route.ts`(PUBLIC_DATA_API_KEY), `lib/weather/kma.ts`(WEATHER_API_KEY), `api/weather/preview/route.ts`(WEATHER_API_KEY).
+- **검증**: `grep -rn "process.env." src`로 `lib/config/env.ts` 외 잔여 참조 0건 확인. `npx tsc --noEmit` EXIT_CODE=0(클린). eslint는 이 샌드박스에 `eslint.config.js`가 없어 실행 자체가 안 됨(기존부터 있던 환경 문제, 이번 변경과 무관) — 사용자가 로컬에서 필요 시 확인.
+- **로컬 DB 접근 불가로 미검증**: 실제 로그인(구글 OAuth)·기상청/카카오/공공데이터 API 호출·Prisma 연결이 런타임에 실제로 정상 동작하는지는 이 환경에서 확인 불가 — 순수 리팩터링(값 재노출만, 로직 변경 없음)이라 회귀 가능성은 낮다고 판단하지만, 로그인/DB 연결처럼 앱 시작에 영향을 주는 부분이라 **사용자가 로컬에서 `npm run dev` 후 로그인·골프장 동기화·날씨 미리보기·지오코딩 중 하나만이라도 확인 권장**.
+
+### 다음 세션 시작 시
+
+- 1단계 로컬 동작 확인 결과를 받으면 2단계(lib/ 폴더 재정리, import 약 45곳)로 진행. 3단계(API route try/catch 보강)부터는 다시 한번 위험 요소를 안내하고 진행. 4단계(무거운 route 리팩터링)는 보류 권장 상태 유지, 사용자가 명시적으로 원할 때만 진행.

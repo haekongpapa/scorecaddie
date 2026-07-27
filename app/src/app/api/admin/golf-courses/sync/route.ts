@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { convertTmToWgs84 } from "@/lib/geo";
+import { env } from "@/lib/config/env";
 
 // 골프장 공공 데이터 업로드 (11번 화면 "골프장 공공 데이터 업로드" 버튼)
 //
@@ -95,7 +96,7 @@ export async function POST() {
     return NextResponse.json({ error: "관리자만 이용할 수 있습니다." }, { status: 403 });
   }
 
-  const serviceKey = process.env.PUBLIC_DATA_API_KEY;
+  const serviceKey = env.publicDataApiKey;
   if (!serviceKey) {
     return NextResponse.json(
       { error: "PUBLIC_DATA_API_KEY가 설정되지 않았습니다." },

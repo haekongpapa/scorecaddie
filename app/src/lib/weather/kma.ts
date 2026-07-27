@@ -15,6 +15,7 @@
 // 달력 날짜이므로(다른 화면의 toISOString().slice(0,10) 표시 로직과 동일 전제) 그대로
 // getUTC*()로 읽으면 된다.
 import { latLngToGrid } from "./grid";
+import { env } from "@/lib/config/env";
 
 const API_BASE_URL =
   "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
@@ -126,7 +127,7 @@ async function fetchForecastItems(
   baseDate: string,
   baseTime: string
 ): Promise<ForecastItem[]> {
-  const serviceKey = process.env.WEATHER_API_KEY;
+  const serviceKey = env.weatherApiKey;
   if (!serviceKey) return [];
 
   const url = new URL(API_BASE_URL);

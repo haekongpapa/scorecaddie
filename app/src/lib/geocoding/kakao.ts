@@ -33,6 +33,8 @@
 // 제공하지 않아 정확히 일치해야 결과가 나온다.
 //
 // 응답에서 x=경도(longitude), y=위도(latitude) — 카카오 특유의 순서라 헷갈리기 쉬우니 주의.
+import { env } from "@/lib/config/env";
+
 const ADDRESS_API_URL = "https://dapi.kakao.com/v2/local/search/address.json";
 const KEYWORD_API_URL = "https://dapi.kakao.com/v2/local/search/keyword.json";
 const FETCH_TIMEOUT_MS = 8_000;
@@ -108,7 +110,7 @@ export async function geocodeAddress(
   addressLotno?: string | null,
   fallbackKeyword?: string
 ): Promise<GeocodeResult> {
-  const key = process.env.KAKAO_REST_API_KEY;
+  const key = env.kakaoRestApiKey;
   if (!key) return { reason: "KAKAO_REST_API_KEY 미설정" };
   if (!address.trim()) return { reason: "주소 값이 비어있음" };
 

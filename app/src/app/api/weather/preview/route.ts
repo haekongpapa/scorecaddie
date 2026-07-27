@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getWeatherSnapshot, isWithinForecastRange } from "@/lib/weather/kma";
+import { env } from "@/lib/config/env";
 
 // 7-1번 화면 "라운드 당시 날씨" 카드 — 골프장/일자/(선택)출발시간이 정해질 때마다 호출해
 // 미리보기를 보여준다. 실제 저장은 POST /api/rounds가 별도로 캡처(이 라우트는 조회 전용,
@@ -40,7 +41,7 @@ export async function GET(req: Request) {
   if (course.latitude === null || course.longitude === null) {
     return NextResponse.json({ available: false, label: null, reason: "course_no_coordinates" });
   }
-  if (!process.env.WEATHER_API_KEY) {
+  if (!env.weatherApiKey) {
     return NextResponse.json({ available: false, label: null, reason: "missing_api_key" });
   }
   if (!isWithinForecastRange(new Date(date))) {
