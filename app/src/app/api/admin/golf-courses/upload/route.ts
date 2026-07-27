@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/services/admin-api";
 import { parseCsv } from "@/lib/services/csv";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
 // 13번 화면 "업로드 및 처리" — 로직 상세는 doc/admin-csv-upload.md 참고.
 // CSV 포맷: 골프장명,루프명,홀번호,Par (첫 행 헤더, 홀번호 1~9, Par 3/4/5)
@@ -17,7 +18,7 @@ type RowError = {
   message: string;
 };
 
-export async function POST(req: Request) {
+export const POST = withApiHandler(async (req: Request) => {
   const { errorResponse } = await requireAdminSession();
   if (errorResponse) return errorResponse;
 
@@ -170,4 +171,4 @@ export async function POST(req: Request) {
     // 응답 과다 방지 — 최대 2000행 처리하지만 오류 목록은 상위 200건만 반환
     errors: errors.slice(0, 200),
   });
-}
+});

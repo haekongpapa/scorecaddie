@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/services/admin-api";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
 // 루프가 실제로 이 골프장 소속인지 방어적으로 확인(다른 골프장 id로 조작 접근 방지).
 async function findOwnedLoop(golfCourseId: string, loopId: string) {
@@ -10,10 +11,10 @@ async function findOwnedLoop(golfCourseId: string, loopId: string) {
 }
 
 // 12번 화면 루프 이름 인라인 편집 / 드래그(-> 실제 구현은 위아래 버튼) 재정렬.
-export async function PATCH(
+export const PATCH = withApiHandler(async (
   req: Request,
   { params }: { params: Promise<{ id: string; loopId: string }> }
-) {
+) => {
   const { errorResponse } = await requireAdminSession();
   if (errorResponse) return errorResponse;
 
@@ -69,17 +70,17 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+});
 
 // 12번 화면 루프 삭제(✕). Round.frontLoopId/backLoopId는 optional 관계라 Prisma 기본
 // referential action이 SetNull이므로, 이 루프를 참조하던 과거 라운드는 에러 없이
 // 참조만 해제된다(HoleScore.par 스냅샷은 별도 필드라 영향 없음). 참조 건수 경고는
 // 클라이언트가 페이지 로드 시점 값(_count)으로 confirm 문구에 표시 — 이 라우트에서
 // 다시 계산하지 않음(동시 편집 가능성 낮은 관리자 단독 툴이라 근사치 허용).
-export async function DELETE(
+export const DELETE = withApiHandler(async (
   _req: Request,
   { params }: { params: Promise<{ id: string; loopId: string }> }
-) {
+) => {
   const { errorResponse } = await requireAdminSession();
   if (errorResponse) return errorResponse;
 
@@ -91,4 +92,4 @@ export async function DELETE(
 
   await prisma.golfCourseLoop.delete({ where: { id: loopId } });
   return NextResponse.json({ ok: true });
-}
+});

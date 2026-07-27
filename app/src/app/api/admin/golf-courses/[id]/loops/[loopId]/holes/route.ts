@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/services/admin-api";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
 const VALID_PARS = [3, 4, 5];
 
 // 12번 화면 "저장" 버튼 — 활성 루프의 9홀 Par를 한 번에 upsert.
 // (루프 CRUD와 달리 Par 값 변경은 즉시 반영하지 않고 이 API로 배치 저장 —
 // "미저장 변경사항 안내" 요구사항과 맞물려, 홀마다 API 호출하지 않기 위함)
-export async function PUT(
+export const PUT = withApiHandler(async (
   req: Request,
   { params }: { params: Promise<{ id: string; loopId: string }> }
-) {
+) => {
   const { errorResponse } = await requireAdminSession();
   if (errorResponse) return errorResponse;
 
@@ -44,4 +45,4 @@ export async function PUT(
   );
 
   return NextResponse.json({ ok: true });
-}
+});

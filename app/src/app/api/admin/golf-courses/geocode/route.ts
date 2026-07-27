@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/services/admin-api";
 import { geocodeAddress } from "@/lib/geocoding/kakao";
 import { env } from "@/lib/config/env";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
 // 11번 관리자 화면 "좌표 지오코딩 실행" 버튼 — 공공데이터에 원본 좌표가 아예 없었던(rawCoordX/Y
 // 없음 또는 변환 결과 이상치) 골프장(GolfCourse.needsGeocoding=true)을 대상으로 주소 기반
@@ -16,7 +17,7 @@ const BATCH_LIMIT = 150;
 const DELAY_MS = 150; // 카카오 로컬 API 순간 QPS 제한 여유를 위해 호출 사이 최소 간격
 const MAX_ERRORS_RETURNED = 200;
 
-export async function POST() {
+export const POST = withApiHandler(async () => {
   const { errorResponse } = await requireAdminSession();
   if (errorResponse) return errorResponse;
 
@@ -102,4 +103,4 @@ export async function POST() {
     stoppedEarly, // 인증 실패 등으로 배치를 조기 중단했으면 그 사유(null이면 정상 진행)
     errors,
   });
-}
+});

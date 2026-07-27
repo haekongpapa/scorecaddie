@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/services/admin-api";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
 // 12번 화면 "+ 루프 추가" — 새 루프를 해당 골프장의 마지막 sortOrder 다음 순번으로 생성.
-export async function POST(
+export const POST = withApiHandler(async (
   req: Request,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { errorResponse } = await requireAdminSession();
   if (errorResponse) return errorResponse;
 
@@ -63,4 +64,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});

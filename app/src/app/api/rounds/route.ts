@@ -3,13 +3,14 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { DUPLICATE_ROUND_MESSAGE, findDuplicateRound } from "@/lib/services/round-duplicate";
 import { getWeatherSnapshot } from "@/lib/weather/kma";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
 const START_TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 // 7-2번 화면에서 첫 홀을 저장하는 시점에 호출 — Round를 지연 생성한다.
 // (Step1에서 미리 만들지 않는 이유: 사용자가 Step2까지 왔다가 아무 홀도 저장하지 않고
 // 이탈하는 경우 빈 Round가 남는 것을 피하기 위함)
-export async function POST(req: Request) {
+export const POST = withApiHandler(async (req: Request) => {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
@@ -87,4 +88,4 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({ roundId: round.id });
-}
+});

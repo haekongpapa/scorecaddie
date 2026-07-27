@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { convertTmToWgs84 } from "@/lib/utils/geo";
 import { env } from "@/lib/config/env";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
 // 골프장 공공 데이터 업로드 (11번 화면 "골프장 공공 데이터 업로드" 버튼)
 //
@@ -87,7 +88,7 @@ function normalizeItems(
   return Array.isArray(item) ? item : [item];
 }
 
-export async function POST() {
+export const POST = withApiHandler(async () => {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
@@ -214,4 +215,4 @@ export async function POST() {
     errors: errors.slice(0, 50),
     lastUpdatedAt: new Date().toISOString(),
   });
-}
+});

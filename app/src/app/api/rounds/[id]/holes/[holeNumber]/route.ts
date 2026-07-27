@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { PinDistanceType, TeeShotResult } from "@prisma/client";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
 const VALID_PAR = [3, 4, 5, 6];
 const VALID_TEE: (TeeShotResult | null)[] = ["FAIRWAY", "MISS", "PENALTY", "OB", null];
@@ -9,10 +10,10 @@ const VALID_PIN: (PinDistanceType | null)[] = ["NEAR", "FAR", null];
 
 // 7-2번 화면 "OO번홀 입력" 버튼 — 홀 하나의 스코어카드 상세 입력값을 upsert한다.
 // (roundId + holeNumber 조합은 @@unique 이므로 홀을 다시 저장하면 그대로 덮어쓴다 — 수정모드도 동일 API 재사용)
-export async function PUT(
+export const PUT = withApiHandler(async (
   req: Request,
   { params }: { params: Promise<{ id: string; holeNumber: string }> }
-) {
+) => {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
@@ -104,4 +105,4 @@ export async function PUT(
   });
 
   return NextResponse.json({ holeScore });
-}
+});

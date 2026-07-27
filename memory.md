@@ -1405,3 +1405,18 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 3단계(API route try/catch 보강, 위험도 중~높음)로 진행 예정 — 회원가입/비밀번호변경/관리자 루프 삭제/지오코딩 등 13개 route.ts 대상. 진행 전 다시 한번 위험 요소 안내 필요.
+
+
+## 93. coding-guidelines.md 적용 3단계 — API route try/catch 공통 래퍼 적용 (2026-07-27)
+
+**3단계**: 에러 처리 없이 Next.js 기본 500에 맡기던 route.ts들에 공통 에러 핸들러를 적용.
+
+- **신규 파일**: `lib/services/with-api-handler.ts` — route handler를 감싸 예외 발생 시 `console.error`로 로그 남기고 일관된 JSON 500 응답(`{error: "서버 오류가 발생했습니다..."}`)을 반환하는 고차 함수. coding-guidelines.md §4-3에서 제안한 "공통 래퍼" 패턴을 그대로 구현.
+- **적용 대상 16개 route.ts**(`export async function X` → `export const X = withApiHandler(async (...) => {...})` 형태로 변경, 내부 로직은 한 글자도 안 건드림): `signup`, `me`, `me/password`, `admin/golf-courses/[id]/loops`(POST), `.../loops/[loopId]`(PATCH+DELETE 둘 다), `.../loops/[loopId]/holes`(PUT), `admin/golf-courses/export`(GET), `admin/golf-courses/geocode`(POST), `admin/golf-courses/upload`(POST), `admin/golf-courses/sync`(POST), `admin/users/role`(PATCH), `rounds/[id]/holes/[holeNumber]`(PUT), `rounds/[id]`(DELETE), `rounds/check-duplicate`(GET), `rounds`(POST), `weather/preview`(GET). `auth/[...nextauth]/route.ts`는 NextAuth 핸들러를 그대로 재노출만 하는 파일이라 대상에서 제외(자체 에러 처리 보유).
+- **기존 내부 try/catch는 그대로 유지**: `upload`/`sync`의 행/페이지 단위 부분 성공 처리 로직, `loops`/`loops/[loopId]`의 P2002(유니크 제약) 분기 처리 — 이 래퍼는 그 바깥의 "예상 못 한 예외"에 대한 최후 방어선이지 기존 로직을 대체하지 않음(설계 의도 그대로 코드 주석에도 명시).
+- **검증**: `grep`으로 `api/` 전체에서 `export async function` 패턴 잔여 0건(nextauth의 `export const {GET,POST} = handlers` 패턴만 예외로 남음) 확인, `withApiHandler` 적용 파일 16개 확인. `npx tsc --noEmit` EXIT_CODE=0(클린).
+- **회귀 가능성 평가**: 성공 경로는 함수 본문이 그대로라 동작 100% 동일. 유일한 동작 변화는 "이전엔 처리 안 된 예외가 나면 Next.js 기본 500 HTML 에러 페이지였던 것이 이제 일관된 JSON 500으로 바뀐다"는 점 — 정상 케이스에는 영향 없음. 다만 이 샌드박스는 로컬 DB 접근이 안 돼 실제 요청/응답을 끝까지 실행해보지는 못함.
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 회원가입·로그인·라운드 등록/삭제·관리자 루프 CRUD·CSV 업로드·공공데이터 동기화·지오코딩 중 몇 가지를 실제로 눌러보고 정상 동작하는지 확인 필요(성공 경로 로직 변경 없어 회귀 위험 낮다고 판단하지만, 민감 기능 포함이라 확인 권장). 문제없으면 4단계(무거운 route 로직 lib로 위임, 보류 권장 상태)를 진행할지, 5~6단계(죽은 파일 정리, 테스트 셋업)로 건너뛸지 사용자 지정 대기.

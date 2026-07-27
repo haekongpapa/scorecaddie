@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getWeatherSnapshot, isWithinForecastRange } from "@/lib/weather/kma";
 import { env } from "@/lib/config/env";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
 // 7-1번 화면 "라운드 당시 날씨" 카드 — 골프장/일자/(선택)출발시간이 정해질 때마다 호출해
 // 미리보기를 보여준다. 실제 저장은 POST /api/rounds가 별도로 캡처(이 라우트는 조회 전용,
@@ -12,7 +13,7 @@ import { env } from "@/lib/config/env";
 // available=false일 때 왜 안 되는지 화면에서 바로 원인을 알 수 있도록 reason을 함께 내려준다
 // (디버깅용, 2026-07-22 추가). 화면(RoundStep1)은 reason을 쓰지 않고 그냥 "날씨 정보 없음"만
 // 보여주면 되지만, API를 직접 호출해 확인할 때는 이 값으로 원인을 바로 알 수 있다.
-export async function GET(req: Request) {
+export const GET = withApiHandler(async (req: Request) => {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
@@ -60,4 +61,4 @@ export async function GET(req: Request) {
     label,
     reason: label === null ? "api_call_failed_or_no_data" : undefined,
   });
-}
+});

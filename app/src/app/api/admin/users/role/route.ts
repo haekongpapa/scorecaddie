@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/services/admin-api";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
 // 14번 화면 일괄 액션 바("어드민 권한 부여"/"어드민 권한 해제").
 // 정책(2026-07-21 확정): 본인 계정의 어드민 권한 자가 해제는 서버에서 차단한다 —
 // 요청 대상 목록에 본인 id가 포함돼 있고 role이 USER(해제)면 그 id만 조용히 제외하고
 // 나머지는 정상 처리(전체 요청을 거부하지 않음, 부분 성공 허용). 응답의 `skippedSelf`로
 // 클라이언트가 "본인 권한은 해제되지 않았습니다" 안내를 띄울 수 있게 한다.
-export async function PATCH(req: Request) {
+export const PATCH = withApiHandler(async (req: Request) => {
   const { session, errorResponse } = await requireAdminSession();
   if (errorResponse) return errorResponse;
 
@@ -46,4 +47,4 @@ export async function PATCH(req: Request) {
       : { count: 0 };
 
   return NextResponse.json({ updatedCount: result.count, skippedSelf });
-}
+});

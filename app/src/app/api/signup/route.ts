@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { withApiHandler } from "@/lib/services/with-api-handler";
 
-export async function POST(req: Request) {
+export const POST = withApiHandler(async (req: Request) => {
   const { email, password, name, thirdPartyConsent } = await req.json();
 
   if (!email || !password) {
@@ -25,4 +26,4 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({ id: user.id, email: user.email }, { status: 201 });
-}
+});
