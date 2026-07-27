@@ -19,6 +19,7 @@
 - **작업 시 필수 규칙**: 이 프로젝트 폴더(`ScoreCaddie`)에 대한 파일 쓰기는 `Edit`/`Write` 툴이 아니라 항상 `mcp__workspace__bash`의 heredoc(`cat > file << 'EOF' ... EOF`)으로 하고, 직후 `wc -c`/`tail`/`grep -cP '\x00'`로 검증할 것(파일이 조용히 잘리거나 변경이 아예 반영 안 되는 마운트 버그가 반복 확인됨 — 8~12번 항목 참고). memory.md·doc/*.md처럼 이미 존재하는 큰 파일을 부분 수정할 때는 python3(`open().read()`→문자열 치환→`open().write()`)로 특정 블록만 교체하는 방식이 안전하고 효율적(전체를 다시 타이핑할 필요 없음, 순수 파일 I/O라 Edit/Write 툴의 truncation 버그와도 무관) — 이번 세션에 확립한 방식.
 - **사용자 커뮤니케이션 선호(2026-07-22)**: 화면 번호를 언급할 때는 항상 화면 명칭을 함께 표기할 것(예: "11번" X → "11번(골프장 Par 관리)" O). 대화뿐 아니라 memory.md/개발리스트.md 등 문서에도 가능하면 이 표기를 유지.
 - **TypeScript 판별 유니언 주의(80번, 2026-07-22)**: `tsconfig.json`이 `strict: false`라 `{ok:true}|{ok:false}` 같은 boolean 판별자 유니언은 `if/else`에서 제대로 안 좁혀짐(narrowing 실패, `tsc` 에러). 성공/실패를 나타내는 타입은 항상 `{lat,lng} | {reason}`처럼 필드 유무로 판별(`"필드명" in 값`)하게 설계할 것 — `lib/weather/kma.ts`(`FetchResult`), `lib/geocoding/kakao.ts`(`GeocodeResult`)가 이 스타일 예시.
+- **코드 작성 시(2026-07-27)**: 디렉터리 구조·코딩 스타일은 `doc/coding-guidelines.md`를 참고할 것(89번 항목 참고) — Express 계층형이 아니라 Next.js App Router/Prisma 관례에 맞춘 프로젝트 전용 가이드.
 - 세부 이력은 아래 8~79번 항목(시간순 작업 로그)에 모두 기록되어 있음.
 
 ---
@@ -1355,3 +1356,18 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 이 가이드가 실제 코드에 아직 소급 적용되진 않은 상태(신규 작성 가이드만 확정) — 기존 코드(`lib/` 구조 등)는 대체로 이미 부합하지만, `config/` 폴더 신설이나 API route 공통 에러 래퍼 도입 같은 항목은 필요 시 사용자 지정에 따라 착수. 그 외 남은 화면 밖 작업(README 동기화/배포 스택 실제 착수/하이원CC 자료)도 계속 대기 중.
+
+
+## 90. 지침 관리 방안 PPT 작성 (2026-07-27)
+
+사용자가 89번 논의 결과(coding-guidelines.md를 자동 로드 지침이 아니라 별도 문서로 유지 + memory.md에 참조 포인터 추가)를 PPT로 만들어달라고 요청 — memory.md에 한 줄 추가 작업과 함께 요청받음.
+
+- **memory.md 갱신**: "0. 다음 세션 시작 가이드" 섹션(21번째 불릿 바로 뒤)에 "코드 작성 시(2026-07-27): 디렉터리 구조·코딩 스타일은 doc/coding-guidelines.md를 참고할 것(89번 항목 참고)" 한 줄 추가. Edit/Write 대신 python3 read/replace/write 방식으로 안전하게 반영(12번 항목에서 확립한 방식), `wc -c`로 바이트 증분 확인 완료.
+- **신규 파일**: `doc/ScoreCaddie_지침관리방안.pptx` (7슬라이드, pptxgenjs). 구성: 질문(자동로드 vs 별도문서) → 옵션 비교(장단점 2단) → 결정(하이브리드, memory.md→coding-guidelines.md 참조 포인터 다이어그램) → 문서 역할 분리표 → 참고(로컬 Claude Code 쓸 경우 CLAUDE.md에 링크만 추가하는 옵션) → 적용 완료(memory.md 22번 줄 실제 문구 인용).
+- **검증**: `validate.py` 통과, 7슬라이드 육안 QA — 1차 렌더에서 타이틀 슬라이드의 "memory.md" 배지 라벨이 텍스트박스 폭 부족으로 두 줄로 줄바꿈되는 문제 발견 → 라벨 박스 폭·배지 간격 조정 및 `margin:0` 적용으로 수정, 장식용 사각형도 어색해 보여 원형(배지 모티프와 통일)으로 교체 후 재검증 완료.
+- **환경 이슈**: LibreOffice PDF 변환 시 동일 파일명(`doc_policy.pdf`)을 반복 재생성하면 `Abort Code:27`로 계속 실패하는 현상 재현 — 매번 새 파일명(`dp2.pdf`, `dp3.pdf` 등)으로 우회. 한글 파일명 문제(88번)와는 별개로, "같은 파일명 반복 변환" 자체도 이 환경에서 불안정할 수 있다는 점을 추가로 확인.
+- **파일 저장**: `doc/` 폴더에 동명 파일이 없어 정상적으로 `ScoreCaddie_지침관리방안.pptx`로 저장 완료(88번 같은 덮어쓰기 충돌 없었음).
+
+### 다음 세션 시작 시
+
+- 지침 문서 체계(memory.md ↔ coding-guidelines.md 역할 분리 + 참조 포인터)는 이제 확정 및 문서화 완료. 실제 코드 작성 시 coding-guidelines.md를 반영하는 것은 이후 실제 구현 작업 때부터 자연스럽게 적용하면 됨. 그 외 남은 화면 밖 작업(README 동기화/배포 스택 실제 착수/하이원CC 자료), doc 폴더에 남아있는 배포방안 검토 PPT 중복본(v1/v2) 정리 여부도 계속 사용자 지정 대기.
