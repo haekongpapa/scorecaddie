@@ -1314,3 +1314,18 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 ### 다음 세션 시작 시
 
 - 로그인 방식은 이제 이메일/비밀번호 + 구글 OAuth 두 가지만 지원. 남은 화면 밖 작업은 README 동기화, 하이원CC Par 자료 확보 정도로 축소됨.
+
+
+## 87. 배포 방안 검토 PPT 작성 (2026-07-27)
+
+사용자 요청: 대화 중 논의한 Vercel/Supabase/Neon/Render 비교 내용(무료·유료 조건, Vercel Hobby 상업적 이용 기준 등)을 배포 방안 검토용 PPT로 정리 + PM 추천안 슬라이드 추가.
+
+- **신규 파일**: `doc/ScoreCaddie_배포방안_검토.pptx` (12슬라이드, pptxgenjs로 생성). 분석/설계 요약 PPT(`ScoreCaddie_분석설계_요약.pptx`)와는 별개 문서 — 배포 스택 재검토만 다루는 보조 문서.
+- **구성**: 검토 배경/목적 → 4개 플랫폼 개요 → Supabase/Neon 각 소개 → 무료 티어 비교 → 유료 요금 비교(예시 비용 막대그래프 포함) → Vercel 소개+요금제 → Vercel Hobby "상업적 이용" 기준(결제/광고/법인소유 등 vs 비상업 인정 사례) → Render 소개(통합 대안) → 종합 비교표 → **PM 추천안**(Vercel+Neon, 근거 4가지 + 조건부 재검토 기준 + 다음 단계 3가지).
+- **추천 근거 요약**: 이미 NextAuth로 인증 자체 구현(Supabase Auth 번들 불필요) + MVP 초기 유휴시간 많음(Neon scale-to-zero 유리) + Next.js 기반(Vercel 최적화 활용) + 현재 무료·비상업 운영(Vercel Hobby 바로 시작 가능). 트래픽이 꾸준해지면 Supabase Pro/Neon Scale 재비교 조건 명시.
+- **검증**: `markitdown`으로 콘텐츠 확인, `validate.py` 전체 통과, 12슬라이드 전체 육안 QA(overflow/overlap 없음) 완료.
+- **참고**: 이번 PPT의 가격/무료티어 수치는 WebSearch로 2026년 최신 자료 기준 확인한 값(대화 내 인용 출처 포함) — 실제 배포 착수 시점에 각 플랫폼 공식 요금 페이지로 한 번 더 재확인 권장.
+
+### 다음 세션 시작 시
+
+- 사용자가 PPT 내용을 검토 후 Vercel+Neon 추천안에 동의하는지, 아니면 다른 조합으로 갈지 확인. 동의 시 "다음 단계"(예산·도메인 확정 → Neon 계정 생성 → Vercel 연동)를 실제로 착수할지는 여전히 사용자 지정 대기. 그 외 남은 화면 밖 작업(README 동기화/하이원CC 자료)도 계속 대기 중.
