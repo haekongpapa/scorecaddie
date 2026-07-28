@@ -1858,3 +1858,21 @@ Round 4, HoleScore 72, Session/VerificationToken 0. 인코딩 손상 문제(110�
   나머지 테이블들은 이미 1회 성공 확인했으므로 이번엔 끝까지 성공할 가능성 높음. 성공 확인되면
   pgAdmin에서 행 수 재확인(User 2 / GolfCourse 652 등) → 로컬에 이미 ADMIN 계정이 있었는지
   확인해 5번(관리자 지정) 단계 생략 여부 판단 → "Supabase 연결" 마일스톤 완료 처리.
+
+
+## 112. 로컬 → Supabase 데이터 이전 완료 (2026-07-28)
+
+`--exclude-table-data=_prisma_migrations` 추가 후 재시도 → 성공 확인("ok 성공했어"). User 2,
+Account 1, GolfCourse 652(좌표 지오코딩 완료분 포함), GolfCourseLoop 9, GolfCourseHole 81,
+Round 4, HoleScore 72 전부 Supabase로 이전 완료. 100~111번에 걸친 시행착오(IPv6 Direct connection
+→ Session pooler 호스트명 오조합 → pgAdmin tenant not found → disable-triggers 권한 문제 →
+PowerShell 인코딩 손상 → _prisma_migrations 충돌) 전부 해결하고 최종 성공.
+
+### 다음 세션 시작 시
+
+- 잔여 확인 필요: (1) `npx prisma generate` 완료 여부, (2) 이전된 User 2건 중 기존에
+  `role=ADMIN`으로 지정해둔 계정이 있는지 pgAdmin에서 확인(있으면 5번 단계 생략 가능, 없으면
+  하나를 ADMIN으로 수동 변경), (3) `npm run dev` 스모크 테스트(로그인/골프장 조회/스코어
+  등록/관리자 화면 진입). 이 세 가지 확인되면 "Supabase 연결" 마일스톤 완전 종료 —
+  `doc/ScoreCaddie_테스트계획서.pptx` 로드맵 "2.Supabase 연결"을 완료로 갱신하고 Playwright
+  셋업(6단계 잔여) 착수 여부 논의.
