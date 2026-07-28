@@ -95,18 +95,23 @@ Session pooler 연결 문자열을 필드별로 나눠 입력하면 됨(문자�
 값과 다르면 발생. DNS/TCP 연결 자체는 되지만(IP는 정상 응답) Supavisor가 해당 tenant를 못 찾는
 것이므로, 짐작이 아니라 `.env`의 검증된 값을 그대로 복사했는지부터 다시 확인할 것.
 
-## 4. 최초 관리자 계정 지정
+## 4. 앱 동작 스모크 테스트 — 먼저 진행 (회원가입으로 User 행 생성)
 
-아직 "최초 관리자 지정" 플로우가 없는 상태(미정 사항, 5번 항목) → Supabase Table Editor(웹
-대시보드) 또는 `prisma studio`에서 `User` 테이블의 `role` 컬럼을 본인 계정만 `ADMIN`으로 직접 수정.
-
-## 5. 앱 동작 스모크 테스트
+**주의: `User` 테이블은 마이그레이션 직후엔 당연히 비어있음(스키마만 생성됐지 데이터는 없음).
+반드시 이 단계를 먼저 해서 계정을 최소 1개 만든 뒤에 5번(관리자 지정)으로 넘어갈 것.**
 
 `npm run dev` 후 아래 확인:
 
-- 회원가입 / 이메일 로그인 / 구글 로그인
-- 골프장 목록 조회, 관리자 화면 진입(위에서 ADMIN으로 바꾼 계정으로)
+- 회원가입 / 이메일 로그인 / 구글 로그인 — 이 중 하나로 로그인하면 `User` 테이블에 행이 생김
+- 골프장 목록 조회
 - 스코어 등록 → 조회 → 라운드 상세
+
+## 5. 최초 관리자 계정 지정
+
+4번에서 만든 본인 계정이 `User` 테이블에 보이는 것을 pgAdmin(또는 Supabase Table Editor,
+`prisma studio`)에서 확인한 뒤, 그 행의 `role` 컬럼만 `USER` → `ADMIN`으로 직접 수정.
+아직 "최초 관리자 지정" 전용 플로우가 없는 상태라(미정 사항, 5번 항목) 이렇게 DB에서 직접
+바꾸는 방법뿐임. 변경 후 앱에서 관리자 화면(골프장 Par 관리/회원 관리) 진입이 가능한지 재확인.
 
 ## 6. 다음 단계 (참고, 이번 작업 범위 아님)
 
@@ -117,13 +122,13 @@ Session pooler 연결 문자열을 필드별로 나눠 입력하면 됨(문자�
 
 ## 체크리스트
 
-- [ ] Supabase 계정 생성 / 프로젝트 생성(scorecaddie, region 선택)
-- [ ] DB 비밀번호 별도 보관 (`credentials.local.txt`)
-- [ ] Connection string(Direct) 확인
-- [ ] `app/.env`의 `DATABASE_URL` 교체
-- [ ] `npx prisma migrate deploy`
+- [x] Supabase 계정 생성 / 프로젝트 생성(scorecaddie, ap-northeast-2) — 2026-07-28
+- [x] DB 비밀번호 별도 보관 (`credentials.local.txt`) — 2026-07-28
+- [x] Connection string(Session pooler) 확인 — 2026-07-28
+- [x] `app/.env`의 `DATABASE_URL` 교체 — 2026-07-28
+- [x] `npx prisma migrate deploy` — 2026-07-28 (Direct→IPv6 이슈로 실패 후 Session pooler로 성공)
+- [x] pgAdmin 연결 확인 — 2026-07-28 (예시 host 오타로 실패 후 `.env` 값 복사로 성공)
 - [ ] `npx prisma generate`
-- [ ] `prisma studio`로 테이블 확인
-- [ ] 관리자 계정(role=ADMIN) 수동 지정
-- [ ] `npm run dev` 스모크 테스트
+- [ ] `npm run dev` 스모크 테스트로 계정 1개 생성(회원가입/로그인) — **관리자 지정보다 먼저**
+- [ ] `User` 테이블에 생성된 계정 확인 후 관리자 계정(role=ADMIN) 수동 지정
 - [ ] 완료 후 결과를 알려주시면 memory.md / 테스트 계획서 갱신 + git commit 진행
