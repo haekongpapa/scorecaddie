@@ -1709,3 +1709,19 @@ URL/Publishable Key/CLI 명령을 추가함.
 
 - 재홍님이 대시보드에서 Session pooler 문자열을 **복사/붙여넣기**로 그대로 가져와 재시도 예정.
   성공 여부 확인 후 memory.md 완료 기록.
+
+
+## 105. Supabase 마이그레이션 성공 — Session pooler 연결 확정 (2026-07-28)
+
+재홍님이 대시보드에서 복사한 정확한 Session pooler 문자열(샤드 번호 포함, 사용자명
+`postgres.<project-ref>`)로 `app/.env`의 `DATABASE_URL`을 교체 후 `npx prisma migrate deploy`
+재시도 → 성공 확인("완료."). 103/104번에서 겪은 IPv6 전용 이슈 + 호스트명 오조합 문제 모두
+해결됨. **Supabase Postgres에 마이그레이션 8건 전부 적용 완료.**
+
+### 다음 세션 시작 시
+
+- `doc/supabase-deploy-guide.md` 3~5절 잔여 단계 진행 확인 필요: `npx prisma generate` →
+  `prisma studio`로 테이블 생성 확인 → 관리자 계정(role=ADMIN) 수동 지정 → `npm run dev`
+  스모크 테스트(로그인/골프장 조회/스코어 등록). 이 단계들까지 완료 확인되면 비로소
+  "Supabase 연결" 마일스톤을 완전히 종료로 간주하고 테스트 계획서(96번 항목) 로드맵
+  "2.Supabase 연결" 단계를 완료로 갱신 + Playwright 셋업(6단계 잔여) 착수 여부 논의.
