@@ -1640,3 +1640,28 @@ rename 우회법**을 git lock 파일에도 그대로 적용해 성공함:
 - 750/871번 항목의 "샌드박스 git 쓰기 불가, 사용자가 로컬에서 직접 처리" 결론은 **이 방법으로
   갱신 가능** — 다음 세션부터는 이 방식으로 먼저 샌드박스 자체 커밋을 시도하고, 그래도 안 되면
   기존처럼 사용자에게 요청하는 순서로 진행.
+
+
+## 102. Supabase 프로젝트 생성 완료 확인 + 샌드박스 접근 불가 재확인 (2026-07-28)
+
+재홍님이 Supabase 프로젝트(`scorecaddie`, project ref `sklyiwlevijfijsupynu`)를 생성하고
+`credentials.local.txt`의 `[supabase 연결]` 항목에 DB 비밀번호/connection string/project
+URL/Publishable Key/CLI 명령을 추가함.
+
+- 샌드박스에서 `db.sklyiwlevijfijsupynu.supabase.co` DNS 조회 및 5432 포트 접근 재시도 →
+  "Temporary failure in name resolution"으로 실패, `sklyiwlevijfijsupynu.supabase.co` HTTPS도
+  프록시 403 — 10번/2026-07-22 항목에서 확인한 네트워크 allowlist 제약이 이 프로젝트에도
+  그대로 적용됨을 재확인. **샌드박스에서 직접 `prisma migrate deploy` 실행 불가, 이번에도
+  재홍님이 로컬에서 `doc/supabase-deploy-guide.md`의 3~5절을 직접 진행해야 함.**
+- **DATABASE_URL 조립 시 주의**: `credentials.local.txt`에 저장된 비밀번호 `Paron@!72gg`에
+  `@` 문자가 포함돼 있어 connection string에 그대로 넣으면 안 됨(URL의 userinfo/host 구분자와
+  충돌) → `%40`으로 퍼센트 인코딩 필요. 최종 `app/.env`용 값:
+  `postgresql://postgres:Paron%40!72gg@db.sklyiwlevijfijsupynu.supabase.co:5432/postgres`
+  (`!`는 인코딩 불필요, sub-delim이라 그대로 사용 가능)
+
+### 다음 세션 시작 시
+
+- 재홍님이 로컬에서 `.env` 교체 → `npx prisma migrate deploy` → `npx prisma generate` →
+  `prisma studio` 테이블 확인 → 관리자 role 수동 지정 → `npm run dev` 스모크 테스트까지
+  마치고 결과를 알려주시면: (1) memory.md 완료 기록, (2) 테스트 계획서 로드맵 "2.Supabase 연결"
+  단계 완료 갱신, (3) Playwright 셋업 착수 여부 논의.
