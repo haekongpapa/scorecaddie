@@ -1574,6 +1574,7 @@ vitest-mock-extended)을 실제로 적용.
   해주셔야 함**(이번 세션 샌드박스에서 겪은 설치 꼬임이 로컬에도 있을 가능성은 낮지만, 이
   프로젝트 폴더의 node_modules 자체는 로컬 파일이라 별도로 새로 설치해야 함 — vitest-mock-extended가
   새로 추가됐으니 한 번은 재설치 필요).
-- `npm run test`로 8개 테스트(round-duplicate 2개 + golf-course-upload 6개) 포함 전체
-  38개(기존 30개 + 신규 8개) 통과 확인 필요.
-- Playwright는 여전히 Supabase 연결 이후로 보류.
+- 2026-07-28: 사용자가 로컬에서 node_modules 재설치 + `npm run test` 38개 전부 통과 확인,
+  git push 완료. Vitest 단위 테스트 트랙은 여기까지 — 이후는 필요할 때 테스트 추가하는 정도.
+- Playwright는 여전히 Supabase 연결 이후로 보류. 다음 세션에서 사용자가 별도로 지시할 때까지
+  대기.
