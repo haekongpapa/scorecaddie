@@ -1779,3 +1779,27 @@ username이 실제 이 프로젝트에 할당된 값과 다름.
 
 - 재홍님이 `npm run dev` → 회원가입/로그인으로 계정 1개 생성 → `User` 테이블에 행 생기는 것
   확인 → 그 행의 `role`을 `ADMIN`으로 수정하는 순서로 재진행 예정.
+
+
+## 109. 로컬 Docker 데이터 → Supabase 이전 방법 안내 (2026-07-28)
+
+재홍님이 "로컬 데이터를 Supabase로 옮길 수는 없나?" 질문 → 가능함을 확인하고 절차 문서화.
+`schema.prisma`의 모든 모델이 PK를 `cuid()` 문자열로 쓰고 있어(시퀀스/auto-increment 없음)
+데이터만 옮기면 되는 단순한 케이스임을 확인.
+
+- **방법**: 로컬 Docker 컨테이너(`scorecaddie-postgres`)에서 `pg_dump --data-only`로 덤프 →
+  같은 컨테이너의 `psql` 클라이언트를 빌려(`docker exec`) Supabase(Session pooler, `.env`의
+  `DATABASE_URL`)로 적재. PowerShell에서는 stdin 리다이렉트(`<`)가 잘 안 되므로
+  `Get-Content ... | docker exec -i ...` 파이프 방식 사용.
+- **가치**: 로컬에 이미 있는 공공데이터 골프장 약 652건(좌표 지오코딩 완료분 포함) + 기존
+  `role=ADMIN` 테스트 계정을 그대로 승계 가능 — Supabase에서 새로 회원가입/관리자 지정/
+  골프장 동기화·지오코딩을 반복할 필요 없어짐.
+- **전제**: Supabase `User` 테이블이 비어있어야 unique 제약 충돌 없음(현재 비어있음 확인됨,
+  108번 항목). 이미 이 사이에 회원가입을 했다면 먼저 정리 필요.
+- `doc/supabase-deploy-guide.md`에 3-2절로 추가. 이전 실수(106번, 예시 문자열을 그대로
+  타이핑)가 반복되지 않도록 "연결 문자열은 `.env` 값을 그대로 복사" 경고를 다시 강조함.
+
+### 다음 세션 시작 시
+
+- 재홍님이 이 방법으로 로컬→Supabase 데이터 이전을 시도할지, 아니면 이미 회원가입을
+  진행해버렸는지 확인 필요. 이전 진행 시 결과(행 수 일치 여부) 확인 후 memory.md 갱신.

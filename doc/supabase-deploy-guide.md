@@ -95,6 +95,35 @@ Session pooler 연결 문자열을 필드별로 나눠 입력하면 됨(문자�
 값과 다르면 발생. DNS/TCP 연결 자체는 되지만(IP는 정상 응답) Supavisor가 해당 tenant를 못 찾는
 것이므로, 짐작이 아니라 `.env`의 검증된 값을 그대로 복사했는지부터 다시 확인할 것.
 
+## 3-2. 기존 로컬 Docker 데이터를 Supabase로 이전 (선택, 권장)
+
+로컬 Docker DB에는 이미 공공데이터 골프장 약 652건(좌표 지오코딩 완료분 포함, 79~82번 항목)과
+테스트 계정(이미 `role=ADMIN`으로 지정해둔 계정 포함 가능)이 들어있을 수 있음. 새로 회원가입해서
+관리자 지정을 반복하거나 골프장 데이터를 다시 동기화/지오코딩하는 대신, **로컬 데이터를 통째로
+Supabase로 옮기면 그 작업들을 그대로 승계**할 수 있음. 스키마의 모든 PK는 `cuid()` 문자열이라
+시퀀스(auto-increment) 문제는 없음 — 데이터만 옮기면 됨.
+
+**전제조건**: Supabase `User` 테이블이 아직 비어있어야 함(unique 제약 충돌 방지). 이미 Supabase에서
+회원가입 등으로 데이터가 생겼다면, 먼저 지워야 충돌 없이 진행 가능(필요 시 문의).
+
+1. 로컬 Docker 컨테이너에서 데이터만 덤프 (스키마는 이미 마이그레이션으로 존재하므로 `--data-only`):
+   ```powershell
+   docker exec scorecaddie-postgres pg_dump -U scorecaddie -d scorecaddie --data-only --no-owner --disable-triggers > scorecaddie_data.sql
+   ```
+2. Supabase로 적재 — **호스트/비밀번호를 이 문서에 타이핑하지 말고 `app/.env`의 `DATABASE_URL`
+   값을 그대로 복사**해서 아래 명령의 연결 문자열 자리에 붙여넣을 것(이전에 예시를 그대로
+   타이핑했다가 겪은 106번 항목의 실수 재발 방지):
+   ```powershell
+   Get-Content scorecaddie_data.sql -Raw | docker exec -i scorecaddie-postgres psql "<.env의 DATABASE_URL 값을 여기 그대로>"
+   ```
+   (`docker exec`로 로컬 컨테이너의 `psql` 클라이언트를 빌려 쓰되, 접속 대상은 원격 Supabase —
+   Docker Desktop 기본 네트워크는 아웃바운드 인터넷이 열려있어 정상 도달함)
+3. 완료 후 pgAdmin의 Supabase 서버에서 `User`/`GolfCourse`/`Round` 등 테이블에 로컬과 동일한
+   행 수가 들어왔는지 확인. 로컬에 이미 `role=ADMIN` 계정이 있었다면 5번(관리자 지정) 단계는
+   생략 가능.
+4. (선택) 문제없이 이전됐으면 로컬 Docker DB는 계속 로컬 개발/테스트용으로 그대로 유지해도 되고,
+   이후 로컬 대신 Supabase로 개발 대상을 옮길지는 재홍님 판단.
+
 ## 4. 앱 동작 스모크 테스트 — 먼저 진행 (회원가입으로 User 행 생성)
 
 **주의: `User` 테이블은 마이그레이션 직후엔 당연히 비어있음(스키마만 생성됐지 데이터는 없음).
