@@ -37,9 +37,14 @@ Project Settings → Database → Connection string 메뉴에서 세 가지 방�
   Direct connection이 IPv6 전용으로 바뀐 것(2024년경부터)인데, 국내 대부분 가정/회사 네트워크가
   IPv4라 도달 자체가 안 됨.
 - **해결(채택)**: **Session pooler** 문자열 사용. Project Settings → Database → Connection string
-  드롭다운에서 "Session pooler" 선택 후 표시되는 문자열 사용
-  (`postgresql://postgres.<project-ref>:[PASSWORD]@aws-<region>.pooler.supabase.com:5432/postgres`
-  형태 — 정확한 리전 prefix는 대시보드에 표시되는 값을 그대로 복사할 것, 프로젝트마다 다름).
+  드롭다운에서 "Session pooler" 선택 후 표시되는 문자열을 **직접 조합하지 말고 그대로 복사**할 것.
+  올바른 형태는 `postgresql://postgres.<project-ref>:[PASSWORD]@aws-<N>-<region>.pooler.supabase.com:5432/postgres`
+  — 호스트에 리전 앞에 `aws-0-`, `aws-1-` 같은 **샤드 번호가 반드시 포함**되며(예:
+  `aws-0-ap-northeast-2.pooler.supabase.com`), 사용자명도 `postgres`가 아니라
+  **`postgres.<project-ref>`**(점 + 프로젝트 ref)로 Direct connection과 다름.
+  2026-07-28에 `aws-ap-northeast-2.pooler.supabase.com`(샤드 번호 누락)으로 직접 조합했다가
+  `P1001`(호스트 자체가 존재하지 않아 DNS 단계에서 실패)이 재현된 바 있음 — **반드시 대시보드
+  문자열을 복사/붙여넣기하고 비밀번호만 치환할 것**.
   Session pooler는 prepared statement를 지원해 Prisma 마이그레이션에도 문제없이 쓸 수 있음.
 - **현재 코드 구조**: `app/prisma.config.ts`(CLI/마이그레이션용)와 `app/src/lib/prisma.ts`(런타임용,
   `@prisma/adapter-pg`)가 **둘 다 같은 `DATABASE_URL` 하나만 사용**하는 구조 (91번 항목의

@@ -1689,3 +1689,23 @@ URL/Publishable Key/CLI 명령을 추가함.
 - 재홍님이 Supabase 대시보드에서 Session pooler 문자열을 복사해 `.env`에 반영 후
   `prisma migrate deploy` 재시도 예정 — 결과 확인되면 memory.md 완료 기록 + 테스트 계획서
   로드맵 갱신.
+
+
+## 104. Session pooler 호스트명 오조합으로 재차 P1001 (2026-07-28)
+
+103번에서 안내한 Session pooler 형식(`aws-<region>.pooler.supabase.com`)이 **불완전한 템플릿**이었음
+— 실제로는 리전 앞에 샤드 번호(`aws-0-`, `aws-1-` 등)가 반드시 포함돼야 하는데 이 부분을 안내에서
+빠뜨림. 재홍님이 `aws-ap-northeast-2.pooler.supabase.com`, `ap-northeast-2.pooler.supabase.com`
+두 가지로 직접 조합해 시도했으나 둘 다 존재하지 않는 호스트라 DNS 단계에서 `P1001` 재현.
+
+- WebSearch로 정확한 형식 재확인: `postgresql://postgres.<project-ref>:[PW]@aws-<N>-<region>.pooler.supabase.com:5432/postgres`
+  — 사용자명도 Direct connection의 `postgres`가 아니라 `postgres.<project-ref>`(점+프로젝트 ref)로 다름.
+- **교훈**: 연결 문자열은 절대 패턴을 보고 직접 조합하지 말고, Supabase 대시보드(Project Settings →
+  Database → Connection string → Session pooler)에 표시되는 문자열을 그대로 복사해 비밀번호
+  placeholder만 치환하도록 안내할 것 — 샤드 번호는 프로젝트별로 달라 예측 불가.
+- `doc/supabase-deploy-guide.md`에 이 경고를 명시적으로 추가.
+
+### 다음 세션 시작 시
+
+- 재홍님이 대시보드에서 Session pooler 문자열을 **복사/붙여넣기**로 그대로 가져와 재시도 예정.
+  성공 여부 확인 후 memory.md 완료 기록.
