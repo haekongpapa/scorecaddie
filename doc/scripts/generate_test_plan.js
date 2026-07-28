@@ -461,10 +461,11 @@ resultTableSlide(
     ["lib/weather/kma.test.ts", "isWithinForecastRange", "통과", "2026-07-28", "4개 케이스(경계값 포함)"],
     ["lib/utils/round-format.test.ts", "라운드 날짜·시간 포맷 함수", "통과", "2026-07-28", "8개 케이스"],
     ["lib/utils/course-format.test.ts", "골프장 주소·구분 포맷 함수", "통과", "2026-07-28", "6개 케이스"],
-    ["lib/services/round-duplicate.test.ts", "findDuplicateRound", "예정", "-", "prisma mock 필요"],
-    ["lib/services/golf-course-upload.test.ts", "processGolfCourseCsvRows", "예정", "-", "prisma mock 필요"],
+    ["lib/services/round-duplicate.test.ts", "findDuplicateRound", "통과", "2026-07-28", "2개 케이스(vi.mock으로 prisma 직접 대체)"],
+    ["lib/services/golf-course-upload.test.ts", "processGolfCourseCsvRows", "통과", "2026-07-28", "6개 케이스(vitest-mock-extended mockDeep 사용)"],
   ]
 );
+// 2026-07-28: 총 38개 테스트(7개 파일) 전부 통과 — 로컬 npm run test로 재확인 완료.
 
 // ── 11. 결과 관리 — Playwright ─────────────────────────────────────────
 resultTableSlide(

@@ -1578,3 +1578,17 @@ vitest-mock-extended)을 실제로 적용.
   git push 완료. Vitest 단위 테스트 트랙은 여기까지 — 이후는 필요할 때 테스트 추가하는 정도.
 - Playwright는 여전히 Supabase 연결 이후로 보류. 다음 세션에서 사용자가 별도로 지시할 때까지
   대기.
+
+
+## 99. 알려진 이슈 기록 + 테스트 계획서 PPT 최신화 (2026-07-28)
+
+- **알려진 이슈**: node_modules를 통째로 지우고 재설치한 뒤 `/dashboard` 접근 시
+  `Cannot find module '.prisma/client/default'` 에러 발생. 원인은 Prisma Client 생성 코드
+  (`node_modules/.prisma/client`)가 `npm install`만으로는 안 만들어지고 `prisma generate`를
+  별도 실행해야 하는데(package.json엔 `prisma:generate` 스크립트만 있고 postinstall 훅 없음),
+  node_modules 재설치 후 이 단계가 빠졌던 것. **해결**: `npm run prisma:generate` 실행 후
+  dev 서버 재시작으로 정상화. **주의**: 앞으로 node_modules를 다시 지우고 설치하는 상황이
+  생기면 매번 `npm install` 다음에 `npm run prisma:generate`까지 세트로 안내할 것.
+- **문서 갱신**: `doc/ScoreCaddie_테스트계획서.pptx`의 Vitest 결과 표 마지막 2행(round-duplicate,
+  golf-course-upload)을 "예정" → "통과"(2026-07-28)로 갱신 — 7개 파일 38개 테스트 전부 통과
+  상태를 반영. `doc/scripts/generate_test_plan.js`도 함께 갱신.
