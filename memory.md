@@ -1876,3 +1876,31 @@ PowerShell 인코딩 손상 → _prisma_migrations 충돌) 전부 해결하고 �
   등록/관리자 화면 진입). 이 세 가지 확인되면 "Supabase 연결" 마일스톤 완전 종료 —
   `doc/ScoreCaddie_테스트계획서.pptx` 로드맵 "2.Supabase 연결"을 완료로 갱신하고 Playwright
   셋업(6단계 잔여) 착수 여부 논의.
+
+
+## 113. Supabase 연결 마일스톤 완료 + 테스트 계획서 로드맵 갱신 (2026-07-28)
+
+재홍님이 관리자 계정 존재 확인, 관리자 화면 진입 성공, 스코어 입력까지 확인("admin 존재
+화면진입 성공 스코어 입력도 확인.") → **"Supabase 연결" 마일스톤 완전 종료**. `prisma generate`는
+데이터 이전 전에 이미 완료돼 있어 재실행 불필요함을 확인(스키마 불변이라 데이터와 무관).
+
+- `doc/supabase-deploy-guide.md` 체크리스트 전체 완료로 갱신, 마지막에 "Playwright e2e 셋업이
+  다음 단계"임을 명시.
+- `doc/scripts/generate_test_plan.js`의 로드맵(슬라이드8)/Playwright 진행방식(슬라이드6)/결과표
+  (슬라이드11) 텍스트를 "Supabase 연결 완료, 이제 Playwright 착수 가능"으로 갱신 후 pptxgenjs로
+  재생성, `validate.py` PASS + 렌더링 육안 검수(로드맵/Playwright 슬라이드 오버플로우 없음) 완료.
+- **파일 저장 이슈**: 기존 `doc/ScoreCaddie_테스트계획서.pptx`를 덮어쓰려 했으나 `cp`가
+  `Permission denied`로 실패 → `~$ScoreCaddie_테스트계획서.pptx` 잠금 파일 존재 확인, 즉
+  **재홍님 PC에서 PowerPoint로 그 파일을 열어두신 상태라 덮어쓰기가 막힌 것**(350번 항목과
+  동일 원인 — 워크스페이스 마운트 자체의 제약이 아니라 단순 파일 잠금). `allow_cowork_file_delete`
+  요청도 거부되어, 88번과 같은 방식으로 **`doc/ScoreCaddie_테스트계획서_v2.pptx`로 별도 저장**함
+  (기존 v1은 그대로 유지, 두 파일 공존 중).
+
+### 다음 세션 시작 시
+
+- **재홍님이 PowerPoint에서 기존 `ScoreCaddie_테스트계획서.pptx`를 닫고, `_v2.pptx` 내용을 확인한
+  뒤 원래 파일명으로 직접 교체(또는 정리) 필요** — 저는 그 파일에 대한 삭제/덮어쓰기 권한이 없음.
+- Playwright 셋업(6단계 잔여, 테스트 전용 로그인 경로 방식 확정 포함) 착수 여부는 사용자 지정 대기.
+- Supabase 관련 시행착오(100~113번)는 전부 해결 완료 — 앞으로 유사 작업 시 106/108/110/111번의
+  교훈(연결문자열은 항상 `.env` 값을 그대로 복사, 관리자 지정보다 회원가입이 먼저, 데이터 이전
+  시 `_prisma_migrations` 제외 + 컨테이너 내부 파이프 사용)을 재적용할 것.

@@ -174,7 +174,9 @@ Supabase로 옮기면 그 작업들을 그대로 승계**할 수 있음. 스키�
 - [x] `app/.env`의 `DATABASE_URL` 교체 — 2026-07-28
 - [x] `npx prisma migrate deploy` — 2026-07-28 (Direct→IPv6 이슈로 실패 후 Session pooler로 성공)
 - [x] pgAdmin 연결 확인 — 2026-07-28 (예시 host 오타로 실패 후 `.env` 값 복사로 성공)
-- [ ] `npx prisma generate`
-- [ ] `npm run dev` 스모크 테스트로 계정 1개 생성(회원가입/로그인) — **관리자 지정보다 먼저**
-- [ ] `User` 테이블에 생성된 계정 확인 후 관리자 계정(role=ADMIN) 수동 지정
-- [ ] 완료 후 결과를 알려주시면 memory.md / 테스트 계획서 갱신 + git commit 진행
+- [x] `npx prisma generate` — 데이터 이전 전에 이미 완료(스키마 변경 없어 재실행 불필요)
+- [x] 로컬 Docker 데이터 → Supabase 이전(3-2절) — 2026-07-28, User 2 / GolfCourse 652 등 전부 성공
+- [x] `npm run dev` 스모크 테스트: 관리자 화면 진입 성공, 스코어 입력 확인 — 2026-07-28
+- [x] 완료 후 memory.md 갱신 + 테스트 계획서 로드맵 갱신 + git commit — 2026-07-28
+
+**Supabase 연결 마일스톤 완료 (2026-07-28).** 다음은 Playwright e2e 셋업(테스트 계획서 로드맵 3단계).

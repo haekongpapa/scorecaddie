@@ -268,7 +268,7 @@ function sectionTitle(slide, title, sub) {
 
   const rows = [
     ["위치", "e2e/ 폴더에 시나리오별 *.spec.ts 로 모음"],
-    ["실행 환경 요구사항", "Supabase DB 연결 필요 — Vitest와 달리 지금은 착수 불가"],
+    ["실행 환경 요구사항", "Supabase DB 연결 완료(2026-07-28) — 이제 착수 가능"],
     ["로그인 우회", "Google/Kakao 실제 OAuth 화면은 자동화 어려움 → 테스트 전용 로그인 경로 또는 세션 쿠키 주입 방식 검토"],
     ["데이터 격리", "운영 DB 오염 방지를 위해 테스트 전용 Supabase 프로젝트/스키마 분리 권장"],
   ];
@@ -352,9 +352,9 @@ function sectionTitle(slide, title, sub) {
   });
 
   const steps = [
-    ["1", "Vitest 셋업 + 우선 함수 테스트 작성", "지금 바로 착수 가능 (DB 불필요)", ACCENT],
-    ["2", "Supabase DB 연결", "배포 검토 문서에서 결정한 인프라 준비 단계", SECONDARY],
-    ["3", "Playwright 셋업 + 테스트 전용 로그인 경로 마련", "OAuth 우회 방식 확정 필요", PRIMARY],
+    ["1", "Vitest 셋업 + 우선 함수 테스트 작성 — 완료", "38개 테스트(7개 파일) 전부 통과, 2026-07-28", ACCENT],
+    ["2", "Supabase DB 연결 — 완료", "프로젝트 생성 + 마이그레이션 8건 + 로컬 데이터 이전까지 완료, 2026-07-28", SECONDARY],
+    ["3", "Playwright 셋업 + 테스트 전용 로그인 경로 마련", "이제 착수 가능 — OAuth 우회 방식 확정 필요", PRIMARY],
     ["4", "핵심 사용자 플로우 e2e 작성 · 실행", "라운드 등록 2-Step부터 우선 작성", "0B5C63"],
   ];
 
@@ -474,7 +474,7 @@ resultTableSlide(
   ["시나리오", "파일", "상태", "최근 실행일", "비고"],
   [
     ["로그인", "e2e/login.spec.ts", "예정", "-", "테스트 전용 로그인 경로 필요"],
-    ["라운드 등록 2-Step", "e2e/round-create.spec.ts", "예정", "-", "Supabase 연결 후 착수"],
+    ["라운드 등록 2-Step", "e2e/round-create.spec.ts", "예정", "-", "Supabase 연결 완료 — 착수 가능"],
     ["라운드 상세·삭제", "e2e/round-delete.spec.ts", "예정", "-", "-"],
     ["관리자 CSV 업로드", "e2e/admin-upload.spec.ts", "예정", "-", "-"],
     ["관리자 공공데이터 동기화", "e2e/admin-sync.spec.ts", "예정", "-", "외부 API 목 서버 권장"],
