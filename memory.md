@@ -1531,6 +1531,9 @@ Supabase DB 연결 전까지는 착수 보류(계획대로).
 
 ### 다음 세션 시작 시
 
-- 사용자가 로컬에서 `npm install` 후 `npm run test`로 재확인 필요.
-- Playwright는 Supabase DB 연결 이후 착수(로드맵 2~4단계). prisma mock이 필요한
-  round-duplicate/golf-course-upload 테스트는 mock 전략(vi.mock 등) 논의 후 별도 진행.
+- 2026-07-28: 사용자가 로컬에서 `npm install` + `npm run test` 실행 및 git push 완료 확인.
+- 6단계는 여기까지 진행: Vitest 셋업 + 순수 함수 30개 테스트는 완료, Playwright는 Supabase
+  DB 연결 이후로 보류(계획대로). prisma mock이 필요한 round-duplicate/golf-course-upload
+  테스트는 mock 전략(vi.mock 등) 논의 후 별도 진행 — 사용자 지정 대기.
+- coding-guidelines.md 적용 1~6단계 중 5단계까지 완료, 6단계는 Vitest 부분만 완료(Playwright는
+  인프라 대기), 남은 건 사실상 Supabase 연결(별도 인프라 작업) 이후로 넘어감.
