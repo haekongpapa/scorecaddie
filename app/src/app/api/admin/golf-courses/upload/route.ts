@@ -1,22 +1,17 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/services/admin-api";
 import { parseCsv } from "@/lib/services/csv";
 import { withApiHandler } from "@/lib/services/with-api-handler";
+import { processGolfCourseCsvRows } from "@/lib/services/golf-course-upload";
 
 // 13번 화면 "업로드 및 처리" — 로직 상세는 doc/admin-csv-upload.md 참고.
 // CSV 포맷: 골프장명,루프명,홀번호,Par (첫 행 헤더, 홀번호 1~9, Par 3/4/5)
+//
+// 2026-07-28: 행 단위 검증/upsert 로직은 lib/services/golf-course-upload.ts로 분리
+// (coding-guidelines.md §4-2) — 이 파일은 파일 검증/파싱/응답 포맷팅만 담당.
 
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 const MAX_ROWS = 2000;
-const VALID_PARS = [3, 4, 5];
-
-type RowError = {
-  row: number;
-  courseName: string;
-  loopName: string;
-  message: string;
-};
 
 export const POST = withApiHandler(async (req: Request) => {
   const { errorResponse } = await requireAdminSession();
@@ -57,112 +52,7 @@ export const POST = withApiHandler(async (req: Request) => {
     );
   }
 
-  let successCount = 0;
-  const errors: RowError[] = [];
-  // 같은 업로드 안에서 (골프장, 루프명) 조합이 홀 수만큼(최대 9번) 반복 등장하므로,
-  // 매번 다시 조회/생성하지 않도록 요청 단위로 캐시. 실패한 조합(null)도 캐시해
-  // 같은 오류가 9번 반복 조회되는 것을 방지.
-  const loopCache = new Map<string, string | null>();
-
-  for (let i = 0; i < dataRows.length; i++) {
-    const rowNum = i + 2; // 헤더가 1행이므로 파일 기준 실제 행 번호
-    const [rawCourseName, rawLoopName, rawHoleNumber, rawPar] = dataRows[i];
-    const courseName = (rawCourseName ?? "").trim();
-    const loopName = (rawLoopName ?? "").trim();
-
-    if (!courseName) {
-      errors.push({ row: rowNum, courseName, loopName, message: "골프장명 누락" });
-      continue;
-    }
-    if (!loopName) {
-      errors.push({ row: rowNum, courseName, loopName, message: "루프명 누락" });
-      continue;
-    }
-
-    const holeNumber = Number(rawHoleNumber);
-    if (!Number.isInteger(holeNumber) || holeNumber < 1 || holeNumber > 9) {
-      errors.push({
-        row: rowNum,
-        courseName,
-        loopName,
-        message: `홀번호 범위 오류(${rawHoleNumber ?? ""})`,
-      });
-      continue;
-    }
-
-    const par = Number(rawPar);
-    if (!VALID_PARS.includes(par)) {
-      errors.push({
-        row: rowNum,
-        courseName,
-        loopName,
-        message: `Par 값 오류(${rawPar ?? ""})`,
-      });
-      continue;
-    }
-
-    const courses = await prisma.golfCourse.findMany({
-      where: { name: courseName },
-      select: { id: true },
-    });
-    if (courses.length === 0) {
-      errors.push({ row: rowNum, courseName, loopName, message: "골프장명 불일치" });
-      continue;
-    }
-    if (courses.length > 1) {
-      errors.push({
-        row: rowNum,
-        courseName,
-        loopName,
-        message: "골프장명 중복, 특정 불가",
-      });
-      continue;
-    }
-    const golfCourseId = courses[0].id;
-
-    const cacheKey = `${golfCourseId}::${loopName}`;
-    let loopId = loopCache.get(cacheKey);
-    if (loopId === undefined) {
-      try {
-        let loop = await prisma.golfCourseLoop.findUnique({
-          where: { golfCourseId_name: { golfCourseId, name: loopName } },
-        });
-        if (!loop) {
-          const existingCount = await prisma.golfCourseLoop.count({
-            where: { golfCourseId },
-          });
-          loop = await prisma.golfCourseLoop.create({
-            data: { golfCourseId, name: loopName, sortOrder: existingCount },
-          });
-        }
-        loopId = loop.id;
-      } catch {
-        loopId = null;
-      }
-      loopCache.set(cacheKey, loopId);
-    }
-
-    if (!loopId) {
-      errors.push({
-        row: rowNum,
-        courseName,
-        loopName,
-        message: "루프 생성/조회 실패",
-      });
-      continue;
-    }
-
-    try {
-      await prisma.golfCourseHole.upsert({
-        where: { loopId_holeNumber: { loopId, holeNumber } },
-        create: { loopId, holeNumber, par },
-        update: { par },
-      });
-      successCount++;
-    } catch {
-      errors.push({ row: rowNum, courseName, loopName, message: "저장 중 오류" });
-    }
-  }
+  const { successCount, errors } = await processGolfCourseCsvRows(dataRows);
 
   return NextResponse.json({
     totalRows: dataRows.length,

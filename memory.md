@@ -1419,4 +1419,43 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 
 ### 다음 세션 시작 시
 
-- 2026-07-28: 사용자가 3단계 로컬 검증 및 git push 완료 확인. 4단계(무거운 route 로직 lib로 위임, 보류 권장)를 진행할지, 5~6단계(죽은 파일 정리, 테스트 셋업)로 건너뛸지 사용자 지정 대기 중.
+- 2026-07-28: 사용자가 3단계 로컬 검증 및 git push 완료 확인 → 4단계 진행 요청.
+
+
+## 94. coding-guidelines.md 적용 4단계 — 무거운 route 로직 lib/services로 위임 (2026-07-28)
+
+**4단계**: route.ts 안에 섞여 있던 반복문 기반 비즈니스 로직(외부 API 페이지네이션, CSV 행 처리,
+배치 지오코딩) 3곳을 lib/services로 분리. 로직은 원본에서 그대로 옮긴 것이라 한 글자도
+바꾸지 않음(동작 변화 없음) — route.ts는 인증 확인 + 서비스 함수 호출 + 응답 포맷팅만 담당.
+
+- **신규 파일**:
+  - `lib/services/golf-course-sync.ts` — `runGolfCourseSync(serviceKey)`. 공공데이터 API
+    페이지네이션 호출(fetchPage/normalizeItems) + upsert 처리(processPage) 전체를 이동.
+    반환 타입은 `{totalCount,addedCount,updatedCount,errors} | {fetchError}` 판별 유니언(field
+    존재 여부로 판별, strict:false 이슈 회피 — coding-guidelines.md §3 패턴 그대로 적용).
+  - `lib/services/golf-course-upload.ts` — `processGolfCourseCsvRows(dataRows)`. CSV 행별
+    검증(골프장명/루프명/홀번호/Par) + 루프 캐시(loopCache) + 골프장Hole upsert 로직 이동.
+  - `lib/services/golf-course-geocode.ts` — `runGeocodingBatch()`. needsGeocoding 대상 조회 +
+    카카오 geocodeAddress 순회 호출(DELAY_MS 간격) + 인증실패 조기중단(stoppedEarly) +
+    좌표 DB 갱신 로직 이동.
+- **수정 파일**(로직 제거, import만 교체): `admin/golf-courses/sync/route.ts`,
+  `admin/golf-courses/upload/route.ts`, `admin/golf-courses/geocode/route.ts` — 세 파일 다
+  20줄 안팎으로 축소.
+- **의도적으로 손대지 않은 부분**: sync/route.ts의 인증 체크는 여전히 인라인(관리자 API가
+  1개뿐이라 requireAdminSession 통합 실익 적다는 기존 설계 판단 그대로 유지, 코드 주석에도
+  명시). loops/route.ts, loops/[loopId]/route.ts, rounds 관련 route.ts들은 검증 로직이 요청
+  파싱과 강하게 결합돼 있고 분량도 적어(50~100줄) 이번 4단계 대상에서 제외 — 억지로 쪼개면
+  오히려 route.ts ↔ lib 파일을 오가며 읽어야 해서 가독성이 떨어진다고 판단.
+- **검증**: `npx tsc --noEmit` EXIT_CODE=0(클린). `git status --short`로 의도한 6개 파일(수정
+  3 + 신규 3)만 변경됐는지 확인.
+- **회귀 가능성 평가**: 함수 본문을 그대로 복사-이동한 것이라 로직 자체는 동일. 다만 2·3단계
+  (파일 이동/래퍼 씌우기)보다 코드를 "다시 타이핑"한 면이 있어 상대적으로 위험도가 높은
+  단계였음 — 그래서 사전에 위험 요소를 안내하고 사용자 승인 후 진행함. 로컬 DB 접근이 안
+  되는 샌드박스라 실제 실행 검증은 못 했음.
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 11번 화면(공공데이터 동기화 실행), 13번 화면(CSV 업로드), 지오코딩 실행
+  버튼을 각각 한 번씩 눌러 정상 동작하는지 확인 필요 — 이 3개가 4단계에서 실제로 코드가
+  옮겨진 대상이라 다른 화면보다 우선 확인 권장. 문제없으면 5단계(죽은 파일 `_repro.ts` 정리)나
+  6단계(Vitest/Playwright 테스트 셋업)로 진행할지 사용자 지정 대기.
