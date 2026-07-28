@@ -17,35 +17,46 @@
 2. "New Project" 클릭
    - Organization: 개인 조직 (없으면 자동 생성됨)
    - Name: `scorecaddie` (또는 원하는 이름)
-   - Database Password: 강력한 비밀번호 생성 후 **반드시 별도 보관** (Supabase는 이후 재표시하지 않음) → `credentials.local.txt`의 `[postgre 접속]` 항목 아래에 추가해두는 것을 권장 (git 미추적 파일이라 안전)
+   - Database Password: 강력한 비밀번호 생성 후 **반드시 별도 보관** (Supabase는 이후 재표시하지 않음) → `credentials.local.txt`의 `[supabase - postgre 접속]` 항목 아래에 추가해두는 것을 권장 (git 미추적 파일이라 안전)
    - Region: 한국에서 가장 가까운 리전 선택 (Northeast Asia (Seoul)이 목록에 있으면 그것, 없으면 Northeast Asia (Tokyo))
    - Pricing Plan: Free로 시작 (MVP 단계, 88번 결정 근거와 동일)
 3. 프로젝트 생성은 1~2분 정도 프로비저닝 대기 필요
 
 ## 2. Connection String 확인 및 방식 선택
 
-Project Settings → Database → Connection string 메뉴에서 두 가지 방식을 확인할 수 있음:
+Project Settings → Database → Connection string 메뉴에서 세 가지 방식을 확인할 수 있음:
 
-| 방식 | 포트 | 용도 |
+| 방식 | 포트 | 특징 |
 |---|---|---|
-| Direct connection | 5432 | 스키마 마이그레이션(`prisma migrate deploy`), 장시간 연결에 적합 |
-| Transaction pooler (pgbouncer) | 6543 | Vercel 같은 서버리스 런타임의 짧은 연결에 적합, 동시 연결 수 제한 회피 |
+| Direct connection | 5432 | **IPv6 전용** (2026-07-28 실사용 확인 — 일반 가정/회사 네트워크(IPv4)에서는 `P1001: Can't reach database server`로 연결 자체가 안 됨) |
+| Session pooler | 5432 | IPv4 호환, prepared statement 지원 → **일반 네트워크에서 마이그레이션·런타임 모두에 사용 가능** |
+| Transaction pooler (pgbouncer) | 6543 | IPv4 호환, prepared statement 미지원(짧은 트랜잭션 전용) → Prisma 사용 시 `?pgbouncer=true` 필요, 동시 연결이 매우 많을 때만 고려 |
 
+- **실제 겪은 문제(2026-07-28)**: Direct connection 문자열로 로컬에서 `prisma migrate deploy`
+  실행 → `P1001: Can't reach database server at db.<ref>.supabase.co:5432` 발생. 원인은 Supabase
+  Direct connection이 IPv6 전용으로 바뀐 것(2024년경부터)인데, 국내 대부분 가정/회사 네트워크가
+  IPv4라 도달 자체가 안 됨.
+- **해결(채택)**: **Session pooler** 문자열 사용. Project Settings → Database → Connection string
+  드롭다운에서 "Session pooler" 선택 후 표시되는 문자열 사용
+  (`postgresql://postgres.<project-ref>:[PASSWORD]@aws-<region>.pooler.supabase.com:5432/postgres`
+  형태 — 정확한 리전 prefix는 대시보드에 표시되는 값을 그대로 복사할 것, 프로젝트마다 다름).
+  Session pooler는 prepared statement를 지원해 Prisma 마이그레이션에도 문제없이 쓸 수 있음.
 - **현재 코드 구조**: `app/prisma.config.ts`(CLI/마이그레이션용)와 `app/src/lib/prisma.ts`(런타임용,
   `@prisma/adapter-pg`)가 **둘 다 같은 `DATABASE_URL` 하나만 사용**하는 구조 (91번 항목의
-  `lib/config/env.ts`도 `databaseUrl` 단일 값).
-- **1차 배포(MVP, 트래픽 적음)**: 우선 Direct connection 하나만으로 `DATABASE_URL`을 설정해도
-  충분할 가능성이 높음(Vercel Hobby + 낮은 트래픽 전제).
-- **추후 필요 시**: 동시 접속이 늘어나 커넥션 이슈가 생기면, Transaction pooler용 별도 변수
-  (`DIRECT_URL` 등)를 추가해 마이그레이션은 Direct, 런타임은 Pooler로 분리하는 코드 변경 필요 —
-  지금은 선제적으로 하지 않고 실제 문제 발생 시 진행 (미정 사항으로 memory.md에 기록).
+  `lib/config/env.ts`도 `databaseUrl` 단일 값) → Session pooler 문자열 하나를 `DATABASE_URL`에
+  넣으면 마이그레이션과 런타임 모두 커버되어 별도 코드 변경 불필요.
+- **비밀번호 URL 인코딩 필수**: 비밀번호에 `@`, `#`, `!` 등 특수문자가 있으면 반드시 퍼센트
+  인코딩(`@`→`%40` 등) 후 연결 문자열에 넣을 것. 인코딩 안 하면 Prisma가 문자열 파싱에 실패함.
+- **추후 필요 시**: 동시 접속이 매우 많아지면 Transaction pooler(6543)로 전환 검토 — 지금은
+  Session pooler로 충분 (미정 사항으로 memory.md에 기록).
 
 ## 3. 로컬에서 첫 마이그레이션 적용
 
 브라우저에서 Connection string(Direct connection, URI 형식)을 복사한 뒤:
 
-1. `app/.env`의 `DATABASE_URL`을 Supabase Direct connection 문자열로 교체
-   (기존 로컬 Docker용 값은 주석 처리하거나 별도 보관해두면 다시 로컬 DB로 돌아가고 싶을 때 편함)
+1. `app/.env`의 `DATABASE_URL`을 Supabase **Session pooler** 문자열(비밀번호는 URL 인코딩
+   적용)로 교체 (기존 로컬 Docker용 값은 주석 처리하거나 별도 보관해두면 다시 로컬 DB로
+   돌아가고 싶을 때 편함)
 2. `cd app`
 3. `npx prisma migrate deploy` — 기존 마이그레이션 8건(init ~ add_golf_course_address_lotno)이
    순서대로 적용됨. **주의: `migrate dev`가 아니라 `migrate deploy` 사용**

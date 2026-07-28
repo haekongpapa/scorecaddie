@@ -1665,3 +1665,27 @@ URL/Publishable Key/CLI 명령을 추가함.
   `prisma studio` 테이블 확인 → 관리자 role 수동 지정 → `npm run dev` 스모크 테스트까지
   마치고 결과를 알려주시면: (1) memory.md 완료 기록, (2) 테스트 계획서 로드맵 "2.Supabase 연결"
   단계 완료 갱신, (3) Playwright 셋업 착수 여부 논의.
+
+
+## 103. Supabase Direct connection IPv6 전용 이슈 — Session pooler로 전환 (2026-07-28)
+
+재홍님이 로컬에서 Direct connection 문자열로 `npx prisma migrate deploy` 실행 →
+`P1001: Can't reach database server at db.sklyiwlevijfijsupynu.supabase.co:5432` 발생.
+
+- **원인**: Supabase의 Direct connection(포트 5432, `db.<ref>.supabase.co`)이 IPv6 전용으로
+  운영됨(2024년경 변경) — 국내 대부분 가정/회사 네트워크는 IPv4라 애초에 도달 불가. 102번
+  항목에서 샌드박스 자체의 네트워크 allowlist 문제로 착각할 뻔했으나, 이번엔 **로컬 PC에서도
+  동일 에러가 났으므로 샌드박스 문제가 아니라 Supabase 쪽 IPv4/IPv6 호환성 문제**로 원인이
+  다름을 WebSearch로 확인(Supabase 공식 트러블슈팅 문서 및 GitHub Discussion 다수 확인).
+- **해결**: Session pooler 연결 문자열(`postgresql://postgres.<ref>:[PW]@aws-<region>.pooler.supabase.com:5432/postgres`,
+  IPv4 호환 + prepared statement 지원)로 `DATABASE_URL` 교체 권장. 이 프로젝트는
+  `prisma.config.ts`/`lib/prisma.ts`가 `DATABASE_URL` 단일 값만 쓰는 구조라 Session pooler
+  문자열 하나로 마이그레이션·런타임 모두 해결 가능 — 코드 변경 불필요.
+- `doc/supabase-deploy-guide.md`의 2절/3절을 이 내용으로 갱신(Direct 대신 Session pooler를
+  1차 권장 방식으로 변경, 표에 IPv6 전용 경고 추가).
+
+### 다음 세션 시작 시
+
+- 재홍님이 Supabase 대시보드에서 Session pooler 문자열을 복사해 `.env`에 반영 후
+  `prisma migrate deploy` 재시도 예정 — 결과 확인되면 memory.md 완료 기록 + 테스트 계획서
+  로드맵 갱신.
