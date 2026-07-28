@@ -1592,3 +1592,30 @@ vitest-mock-extended)을 실제로 적용.
 - **문서 갱신**: `doc/ScoreCaddie_테스트계획서.pptx`의 Vitest 결과 표 마지막 2행(round-duplicate,
   golf-course-upload)을 "예정" → "통과"(2026-07-28)로 갱신 — 7개 파일 38개 테스트 전부 통과
   상태를 반영. `doc/scripts/generate_test_plan.js`도 함께 갱신.
+
+
+## 100. Supabase DB 배포 가이드 문서 작성 (2026-07-28)
+
+사용자가 "Supabase에 DB 배포 진행을 시작해달라"고 요청. 진행 방식을 먼저 확인한 결과(가이드
+문서 준비/Chrome으로 같이 진행/이미 프로젝트 있음 3안 중) **"가이드 문서로 준비"**를 선택 —
+이 샌드박스는 `supabase.com`에 네트워크 접근이 안 되므로(10번 항목 이슈와 동일 계열,
+아웃바운드 allowlist 제한) 실제 계정/프로젝트 생성은 PM이 대신 할 수 없고, 재홍님이 직접
+브라우저에서 진행해야 함을 재확인.
+
+- `credentials.local.txt` 확인 결과 Supabase 관련 정보 없음 → 아직 프로젝트 생성 전 단계임을 확정.
+- **신규 파일**: `doc/supabase-deploy-guide.md` — 프로젝트 생성(리전/비밀번호/플랜) →
+  Connection string 확인(Direct vs Transaction pooler 차이, 현재 코드가 `DATABASE_URL`
+  단일 변수만 쓰는 구조라 1차는 Direct 하나로 충분할 것으로 판단, pooler 분리는 커넥션 이슈
+  실제 발생 시로 유보) → `npx prisma migrate deploy`(`migrate dev` 아님 주의) →
+  `prisma generate` → `prisma studio`로 테이블 확인 → 관리자 계정(role=ADMIN) 수동 지정 →
+  `npm run dev` 스모크 테스트 → Vercel 연동은 별도 다음 단계로 명시. 체크리스트 포함.
+- 코드 변경은 하지 않음(가이드 문서만 준비하기로 선택했으므로 범위 밖).
+
+### 다음 세션 시작 시
+
+- 재홍님이 `doc/supabase-deploy-guide.md`를 따라 Supabase 프로젝트 생성 + `prisma migrate deploy`
+  + 스모크 테스트를 로컬에서 진행한 뒤 결과를 알려주시면: (1) memory.md에 완료 기록, (2)
+  `doc/ScoreCaddie_테스트계획서.pptx` 로드맵의 "2.Supabase 연결" 단계를 완료로 갱신, (3) Playwright
+  셋업(6단계 나머지) 착수 여부 논의, (4) 필요 시 Vercel 연동 가이드 후속 작성.
+- 만약 로컬에서 커넥션 풀링 이슈(서버리스 동시 접속 관련 에러)가 발생하면, 가이드 2절에 적어둔
+  대로 `DIRECT_URL` 분리 코드 변경(`prisma.config.ts`/`lib/prisma.ts`) 논의 필요.
