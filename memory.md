@@ -1470,4 +1470,32 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 
 ### 다음 세션 시작 시
 
-- 6단계(Vitest/Playwright 테스트 셋업)로 진행할지 사용자 지정 대기 중.
+- 6단계(Vitest/Playwright 테스트 셋업) 착수 전, 사용자 요청으로 테스트 계획서 PPT를 먼저 작성함(아래 96번).
+
+
+## 96. 테스트 계획서 PPT 작성 (2026-07-28)
+
+6단계(Vitest/Playwright 셋업) 실제 착수 전에, 진행 방식과 결과 추적 방법을 정리한 PPT 요청.
+
+- **산출물**: `doc/ScoreCaddie_테스트계획서.pptx` (11슬라이드) — 표지, 목차, 테스트 전략 개요
+  (Vitest vs Playwright 역할 분담), Vitest 진행 방식·우선 대상 함수 표(실제 lib/ 함수 기준:
+  parseCsv, convertTmToWgs84, isWithinForecastRange 등 의존성 없는 함수부터 prisma/fetch mock이
+  필요한 함수까지), Playwright 진행 방식(위치/환경 요구사항/OAuth 로그인 우회 방안/데이터 격리)·
+  우선 시나리오 8개, 진행 로드맵(1.Vitest 셋업→2.Supabase 연결→3.Playwright 셋업→4.e2e 작성),
+  테스트 결과 관리 표 2장(Vitest/Playwright 각각 — 테스트 파일·대상·상태·최근 실행일·비고 컬럼,
+  현재는 전부 "예정" 상태).
+- **재사용 스크립트**: `doc/scripts/generate_test_plan.js` (pptxgenjs) — 다음 세션 이후 실제로
+  테스트를 작성/실행하면 이 스크립트의 결과 표 데이터(상태·최근 실행일)만 갱신해 다시
+  `node generate_test_plan.js` 실행하면 같은 PPT가 최신 상태로 재생성됨. **주의**: pptxgenjs가
+  로컬 node_modules로 설치돼 있어야 함(사용자 PC에서 실행 시 `npm install pptxgenjs` 선행 필요,
+  스크립트 자체에는 포함 안 함).
+- **색상/모티프**: Teal Trust 팔레트(028090/00A896/02C39A) + 원형 배지 넘버링 — 기존 배포 검토
+  PPT·지침 관리 PPT와 다른 톤(테스트/신뢰 이미지에 맞춤), 지금까지 만든 PPT들과 스타일 일관성은
+  유지(원형 뱃지 모티프, accent stripe 미사용).
+- 검증: pptx skill의 validate.py 통과, markitdown으로 placeholder 텍스트 잔여 없음 확인, 11장
+  전체 육안 검수(1차에서 "테스트 전략 개요" 슬라이드의 라벨/값 세로 정렬 어긋남 발견 → valign
+  명시로 수정 후 재검수 통과).
+
+### 다음 세션 시작 시
+
+- 사용자가 이 PPT 확인 후 6단계(Vitest 셋업) 실제 착수 여부 지정 대기 중.
