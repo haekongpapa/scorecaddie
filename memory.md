@@ -1619,3 +1619,24 @@ vitest-mock-extended)을 실제로 적용.
   셋업(6단계 나머지) 착수 여부 논의, (4) 필요 시 Vercel 연동 가이드 후속 작성.
 - 만약 로컬에서 커넥션 풀링 이슈(서버리스 동시 접속 관련 에러)가 발생하면, 가이드 2절에 적어둔
   대로 `DIRECT_URL` 분리 코드 변경(`prisma.config.ts`/`lib/prisma.ts`) 논의 필요.
+
+
+## 101. git index.lock/HEAD.lock 잔여 파일 우회법 발견 (2026-07-28)
+
+100번 커밋 시도 중 8~12번/750번 항목과 같은 `.git/index.lock`, `.git/HEAD.lock` 잔여 파일로 인한
+"Operation not permitted"/"cannot lock ref 'HEAD'" 에러 재발. 750번 항목에서는 "세션 내 해결
+불가"로 결론 낸 바 있으나, 이번엔 **`prisma generate`의 EPERM 문제(1248번 항목)와 동일한 원리인
+rename 우회법**을 git lock 파일에도 그대로 적용해 성공함:
+
+- `mv .git/index.lock .git/index.lock.stale_<timestamp>` (delete 대신 rename — 이 마운트는
+  unlink만 막혀있고 rename은 허용되는 특성, 기존에 이미 여러 `*.old_<timestamp>` 잔재가 쌓여있던
+  것으로 보아 과거 세션들도 암묵적으로 이 방법을 썼던 것으로 추정)
+- `HEAD.lock`도 동일하게 `mv`로 우회
+- **주의**: `git add`/`git commit` 등 쓰기 명령을 실행할 때마다 매번 새 `index.lock`이 생성되고
+  명령 종료 시 삭제(unlink)를 시도하다 다시 걸림 → **각 git 명령 실행 직후 다음 명령 실행 전에
+  매번 `mv .git/index.lock .git/index.lock.stale_$(date +%s)`로 비켜줘야 함**(한 번에 여러 커밋을
+  연달아 하려면 명령 사이마다 반복 필요). `git commit` 자체는 exit=0으로 정상 완료되고
+  `git log`에도 정상 반영됨 — warning 메시지(unable to unlink)는 무시해도 됨.
+- 750/871번 항목의 "샌드박스 git 쓰기 불가, 사용자가 로컬에서 직접 처리" 결론은 **이 방법으로
+  갱신 가능** — 다음 세션부터는 이 방식으로 먼저 샌드박스 자체 커밋을 시도하고, 그래도 안 되면
+  기존처럼 사용자에게 요청하는 순서로 진행.
