@@ -1725,3 +1725,26 @@ URL/Publishable Key/CLI 명령을 추가함.
   스모크 테스트(로그인/골프장 조회/스코어 등록). 이 단계들까지 완료 확인되면 비로소
   "Supabase 연결" 마일스톤을 완전히 종료로 간주하고 테스트 계획서(96번 항목) 로드맵
   "2.Supabase 연결" 단계를 완료로 갱신 + Playwright 셋업(6단계 잔여) 착수 여부 논의.
+
+
+## 106. pgAdmin "Tenant or user not found" — 가이드 예시 문자열을 그대로 타이핑해서 발생 (2026-07-28)
+
+pgAdmin으로 Supabase 연결 시도 → `FATAL: (ENOTFOUND) tenant/user postgres.sklyiwlevijfijsupynu
+not found` 반복 발생(host `aws-0-ap-northeast-2.pooler.supabase.com`, 여러 IP로 재시도하지만
+전부 동일 에러). DNS/TCP는 정상(IP 응답 옴), Supavisor가 tenant를 못 찾는 것 — 즉 host 또는
+username이 실제 이 프로젝트에 할당된 값과 다름.
+
+- **원인 추정**: 105번에서 이미 검증된 `prisma migrate deploy` 성공 시점의 정확한 host/username은
+  `app/.env`의 `DATABASE_URL`에 있는데, 이전 답변(3-1절)에서 제가 예시로 든
+  `aws-0-ap-northeast-2.pooler.supabase.com`을 재홍님이 실제 값 확인 없이 그대로 입력했을
+  가능성이 높음 — WebSearch로 확인한 바, 같은 리전이라도 프로젝트마다 Supavisor 샤드 번호
+  (`aws-0-`, `aws-1-` 등)가 다르게 배정되며 예시와 실제가 다르면 이 에러가 정확히 재현됨.
+- **가이드 수정**: `doc/supabase-deploy-guide.md` 3-1절에 "예시 문자열을 타이핑하지 말고 반드시
+  `.env`의 검증된 `DATABASE_URL`에서 host/username을 복사해서 쓸 것"을 강조하는 경고 추가 +
+  문제 발생 시 체크포인트 문단 추가.
+
+### 다음 세션 시작 시
+
+- 재홍님이 `.env`의 `DATABASE_URL`에서 정확한 host/username을 복사해 pgAdmin에 재입력 후
+  재시도 예정. 그래도 같은 에러가 나면 Supabase 대시보드에서 Connection string을 다시 한번
+  직접 열어 최신 값과 대조 필요(프로젝트 설정이 이후 바뀌었을 가능성도 배제 못함).

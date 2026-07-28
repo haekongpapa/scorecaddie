@@ -78,14 +78,22 @@ Session pooler 연결 문자열을 필드별로 나눠 입력하면 됨(문자�
 
 1. pgAdmin 접속 → Servers 우클릭 → Register → Server
 2. **General 탭**: Name에 `Supabase - scorecaddie` 등 구분 가능한 이름 입력(기존 로컬 서버와 별도 항목으로 추가, 로컬 항목은 그대로 유지)
-3. **Connection 탭**:
-   - Host name/address: 연결 문자열의 `@` 뒤 ~ `:5432` 앞 부분 (예: `aws-0-ap-northeast-2.pooler.supabase.com`, 정확한 값은 `.env`의 `DATABASE_URL`에서 확인)
+3. **Connection 탭** — **반드시 `app/.env`의 `DATABASE_URL`(마이그레이션이 이미 성공한 그 값)을
+   열어 host/username을 그대로 복사할 것. 절대 이 문서의 예시 문자열을 그대로 타이핑하지 말 것**
+   (같은 리전이라도 프로젝트마다 Supavisor 샤드 번호가 달라 `aws-0-...`가 아닐 수 있고, 다른
+   샤드로 접속하면 `FATAL: Tenant or user not found`가 발생함 — 2026-07-28 실제 재현됨):
+   - Host name/address: `DATABASE_URL`의 `@` 뒤 ~ `:5432` 앞 부분을 정확히 복사
    - Port: `5432`
    - Maintenance database: `postgres`
-   - Username: `postgres.<project-ref>` (예: `postgres.sklyiwlevijfijsupynu`)
-   - Password: `credentials.local.txt`의 Supabase DB 비밀번호 원문(인코딩 없이 그대로, 예: `Paron@!72gg`)
+   - Username: `DATABASE_URL`의 `postgres.` 뒤 프로젝트 ref 부분까지 정확히 복사 (예:
+     `postgres.sklyiwlevijfijsupynu` 형태, 앞뒤 공백 없이)
+   - Password: `credentials.local.txt`의 Supabase DB 비밀번호 원문(URL 인코딩 없이 그대로, 예: `Paron@!72gg`)
 4. **SSL 탭**: SSL mode를 **Require**로 설정 (Supabase는 SSL 연결을 요구함 — 로컬 Docker DB와의 차이점)
 5. Save 후 좌측 트리에서 `postgres` DB 하위에 마이그레이션으로 생성된 테이블들이 보이면 정상
+
+**문제 발생 시(`FATAL: Tenant or user not found`)**: 호스트나 사용자명이 실제 프로젝트에 할당된
+값과 다르면 발생. DNS/TCP 연결 자체는 되지만(IP는 정상 응답) Supavisor가 해당 tenant를 못 찾는
+것이므로, 짐작이 아니라 `.env`의 검증된 값을 그대로 복사했는지부터 다시 확인할 것.
 
 ## 4. 최초 관리자 계정 지정
 
