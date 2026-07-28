@@ -1748,3 +1748,16 @@ username이 실제 이 프로젝트에 할당된 값과 다름.
 - 재홍님이 `.env`의 `DATABASE_URL`에서 정확한 host/username을 복사해 pgAdmin에 재입력 후
   재시도 예정. 그래도 같은 에러가 나면 Supabase 대시보드에서 Connection string을 다시 한번
   직접 열어 최신 값과 대조 필요(프로젝트 설정이 이후 바뀌었을 가능성도 배제 못함).
+
+
+## 107. pgAdmin Supabase 연결 성공 (2026-07-28)
+
+`.env`의 검증된 `DATABASE_URL` 값을 그대로 복사해 pgAdmin에 입력 → 연결 성공 확인("연결했어").
+106번 이슈(예시 문자열을 타이핑해서 발생한 tenant not found) 해결 완료.
+
+### 다음 세션 시작 시
+
+- Supabase 연결 마일스톤 잔여 체크: `npx prisma generate` 완료 여부, pgAdmin(또는 studio)에서
+  본인 계정 `role=ADMIN` 수동 지정, `npm run dev` 스모크 테스트(로그인/골프장 조회/스코어 등록).
+  전부 확인되면 테스트 계획서(96번 항목) 로드맵 "2.Supabase 연결" 완료로 갱신 + Playwright
+  셋업(6단계 잔여) 착수 여부 논의.
