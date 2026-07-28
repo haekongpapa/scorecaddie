@@ -417,16 +417,25 @@ function sectionTitle(slide, title, sub) {
   pageFooter(s, "ScoreCaddie 테스트 계획서  ·  05 테스트 결과 관리");
 }
 
+const STATUS_COLOR = { "예정": "8A9A9C", "작성완료": "0B5C63", "통과": "0B8457", "실패": "B23A48" };
+
 function resultTableSlide(title, subtitle, header, rows) {
   const s = pres.addSlide();
   s.background = { color: WHITE };
   sectionTitle(s, title, subtitle);
 
-  const tableRows = [header, ...rows].map((r, idx) => r.map((c) => ({
+  const statusColIdx = header.indexOf("상태");
+
+  const tableRows = [header, ...rows].map((r, idx) => r.map((c, colIdx) => ({
     text: c,
     options: idx === 0
       ? { bold: true, color: WHITE, fill: { color: PRIMARY }, fontSize: 12 }
-      : { color: TEXT_DARK, fill: { color: idx % 2 === 0 ? CARD_BG : WHITE }, fontSize: 11 },
+      : {
+          color: colIdx === statusColIdx ? (STATUS_COLOR[c] || TEXT_DARK) : TEXT_DARK,
+          bold: colIdx === statusColIdx,
+          fill: { color: idx % 2 === 0 ? CARD_BG : WHITE },
+          fontSize: 11,
+        },
   })));
 
   s.addTable(tableRows, {
@@ -447,9 +456,11 @@ resultTableSlide(
   "단위 테스트 실행 결과를 여기에 누적 기록합니다",
   ["테스트 파일", "테스트 대상", "상태", "최근 실행일", "비고"],
   [
-    ["lib/services/csv.test.ts", "parseCsv", "예정", "-", "따옴표·콤마 포함 케이스"],
-    ["lib/utils/geo.test.ts", "convertTmToWgs84", "예정", "-", "좌표 경계값 포함"],
-    ["lib/weather/kma.test.ts", "isWithinForecastRange", "예정", "-", "범위 경계값"],
+    ["lib/services/csv.test.ts", "parseCsv / findColumnIndex", "통과", "2026-07-28", "8개 케이스(따옴표·콤마·BOM 등)"],
+    ["lib/utils/geo.test.ts", "convertTmToWgs84", "통과", "2026-07-28", "4개 케이스(범위 이상치 포함)"],
+    ["lib/weather/kma.test.ts", "isWithinForecastRange", "통과", "2026-07-28", "4개 케이스(경계값 포함)"],
+    ["lib/utils/round-format.test.ts", "라운드 날짜·시간 포맷 함수", "통과", "2026-07-28", "8개 케이스"],
+    ["lib/utils/course-format.test.ts", "골프장 주소·구분 포맷 함수", "통과", "2026-07-28", "6개 케이스"],
     ["lib/services/round-duplicate.test.ts", "findDuplicateRound", "예정", "-", "prisma mock 필요"],
     ["lib/services/golf-course-upload.test.ts", "processGolfCourseCsvRows", "예정", "-", "prisma mock 필요"],
   ]

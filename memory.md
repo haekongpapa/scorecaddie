@@ -1498,4 +1498,39 @@ v4 갱신 시 슬라이드7(DB 컬럼 정의)의 GolfCourseHole 섹션 필드만
 
 ### 다음 세션 시작 시
 
-- 사용자가 이 PPT 확인 후 6단계(Vitest 셋업) 실제 착수 여부 지정 대기 중.
+- 사용자가 이 PPT 확인 후 6단계(Vitest 셋업) 실제 착수 요청.
+
+
+## 97. coding-guidelines.md 적용 6단계 (일부) — Vitest 셋업 + 순수 함수 테스트 5개 파일 작성 (2026-07-28)
+
+**6단계 착수**: 테스트 계획서 PPT의 로드맵 1단계(Vitest 셋업)를 실제로 진행. Playwright는
+Supabase DB 연결 전까지는 착수 보류(계획대로).
+
+- **신규 파일**:
+  - `app/vitest.config.ts` — environment: "node", tsconfig의 `@/*` -> `./src/*` alias를
+    vite-tsconfig-paths 같은 별도 패키지 없이 resolve.alias로 직접 매핑(의존성 최소화).
+  - `app/src/lib/services/csv.test.ts` (8케이스), `lib/utils/geo.test.ts` (4케이스),
+    `lib/weather/kma.test.ts` (4케이스), `lib/utils/round-format.test.ts` (8케이스),
+    `lib/utils/course-format.test.ts` (6케이스) — 테스트 계획서에서 "의존성 없음"으로 분류한
+    순수 함수 전부(prisma/외부 fetch 의존 없는 함수) 대상. 총 30개 테스트.
+  - `geo.test.ts`는 실제 좌표 변환값을 사전에 node로 한 번 계산해(임의 국내 좌표 하나) 그
+    결과를 기댓값으로 고정 — 변환 로직 자체가 맞는지는 별도 검증 대상이 아니라 "이후 코드
+    변경으로 결과가 달라지는지" 감지가 목적이므로 회귀 테스트로는 이 방식이 적절.
+  - `kma.test.ts`는 `isWithinForecastRange(targetDate, now)`가 `now`를 인자로 받는 걸 활용해
+    고정된 시각(2026-07-28 KST 12:00)을 주입, 실행 시점과 무관하게 결정적으로 테스트.
+- **수정 파일**: `app/package.json` — `"test": "vitest run"`, `"test:watch": "vitest"` 스크립트
+  추가, devDependencies에 `vitest: 4.1.10` 추가(npm 레지스트리 최신 버전 확인 후 고정).
+  **사용자가 로컬에서 한 번 `npm install` 재실행 필요**(devDependency 추가라 런타임 코드에는
+  영향 없음).
+- **검증**: 샌드박스에서 `npx vitest run` 실행 — 5개 파일 30개 테스트 전부 통과. `npx tsc
+  --noEmit` 클린. round-duplicate.ts/golf-course-upload.ts 등 prisma에 의존하는 함수들은
+  mock 전략을 아직 정하지 않아 이번 범위에서 제외(테스트 계획서에도 "예정"으로 남겨둠).
+- **테스트 계획서 갱신**: `doc/ScoreCaddie_테스트계획서.pptx`의 "테스트 결과 — Vitest" 표를
+  실제 결과로 갱신(5개 파일 "통과", 2026-07-28) — `doc/scripts/generate_test_plan.js`의 결과
+  테이블에 상태별 색상(통과=녹색/예정=회색 등) 강조도 함께 추가.
+
+### 다음 세션 시작 시
+
+- 사용자가 로컬에서 `npm install` 후 `npm run test`로 재확인 필요.
+- Playwright는 Supabase DB 연결 이후 착수(로드맵 2~4단계). prisma mock이 필요한
+  round-duplicate/golf-course-upload 테스트는 mock 전략(vi.mock 등) 논의 후 별도 진행.
