@@ -106,21 +106,33 @@ Supabase로 옮기면 그 작업들을 그대로 승계**할 수 있음. 스키�
 **전제조건**: Supabase `User` 테이블이 아직 비어있어야 함(unique 제약 충돌 방지). 이미 Supabase에서
 회원가입 등으로 데이터가 생겼다면, 먼저 지워야 충돌 없이 진행 가능(필요 시 문의).
 
-1. 로컬 Docker 컨테이너에서 데이터만 덤프 (스키마는 이미 마이그레이션으로 존재하므로 `--data-only`):
+**주의 (2026-07-28 1차 시도 실패 원인, 아래 방법은 이미 반영된 수정본)**:
+- `--disable-triggers`는 쓰지 말 것 — Supabase의 `postgres.<ref>` 접속 계정은 진짜 superuser가
+  아니라서 FK 정합성용 내부 시스템 트리거(`RI_ConstraintTrigger_*`)를 비활성화할 권한이 없어
+  `permission denied: "RI_ConstraintTrigger_..." is a system trigger` 에러 발생. `--data-only`는
+  기본적으로 FK 의존 순서를 지켜 데이터를 정렬해 내보내므로(이 스키마는 순환참조 없음)
+  `--disable-triggers` 자체가 불필요.
+- **PowerShell로 파일을 거쳐가면(`> scorecaddie_data.sql` 후 `Get-Content | docker exec`) 한글이
+  깨짐** — 콘솔 인코딩 변환 과정에서 UTF-8 바이트가 손상돼 `???????` 같은 깨진 문자와 함께
+  COPY 데이터의 컬럼 정렬까지 어긋나는 것을 확인(`GolfCourse`의 "extra data after last expected
+  column", `User`의 "invalid input syntax for type timestamp: USER" 등이 전부 이 결과).
+  **해결: pg_dump→psql 파이프 전체를 컨테이너 안(`sh -c`)에서 실행해 PowerShell이 데이터 바이트를
+  전혀 건드리지 않게** 함.
+
+1. 진행 전 확인: pgAdmin에서 Supabase `User` 테이블이 비어있는지(`SELECT count(*) FROM "User"`)
+   확인. 1차 시도의 COPY들은 전부 에러로 실패해 커밋된 행은 없을 가능성이 높지만(각 COPY는
+   실패 시 그 COPY 전체가 롤백됨), 혹시 남은 데이터가 있으면 재시도 전에 알려줄 것(정리 필요).
+2. 아래 한 줄로 덤프와 적재를 한 번에 실행 — **`<...>` 자리에 `app/.env`의 `DATABASE_URL` 값을
+   그대로 복사**해서 넣을 것(직접 타이핑 금지, 106번 항목 실수 재발 방지):
    ```powershell
-   docker exec scorecaddie-postgres pg_dump -U scorecaddie -d scorecaddie --data-only --no-owner --disable-triggers > scorecaddie_data.sql
+   docker exec scorecaddie-postgres sh -c "pg_dump -U scorecaddie -d scorecaddie --data-only --no-owner | psql --single-transaction '<.env의 DATABASE_URL 값>'"
    ```
-2. Supabase로 적재 — **호스트/비밀번호를 이 문서에 타이핑하지 말고 `app/.env`의 `DATABASE_URL`
-   값을 그대로 복사**해서 아래 명령의 연결 문자열 자리에 붙여넣을 것(이전에 예시를 그대로
-   타이핑했다가 겪은 106번 항목의 실수 재발 방지):
-   ```powershell
-   Get-Content scorecaddie_data.sql -Raw | docker exec -i scorecaddie-postgres psql "<.env의 DATABASE_URL 값을 여기 그대로>"
-   ```
-   (`docker exec`로 로컬 컨테이너의 `psql` 클라이언트를 빌려 쓰되, 접속 대상은 원격 Supabase —
-   Docker Desktop 기본 네트워크는 아웃바운드 인터넷이 열려있어 정상 도달함)
-3. 완료 후 pgAdmin의 Supabase 서버에서 `User`/`GolfCourse`/`Round` 등 테이블에 로컬과 동일한
-   행 수가 들어왔는지 확인. 로컬에 이미 `role=ADMIN` 계정이 있었다면 5번(관리자 지정) 단계는
-   생략 가능.
+   - `sh -c` 안에서 `pg_dump | psql`이 전부 컨테이너 내부적으로 실행되어 한글 데이터가 호스트
+     PowerShell을 거치지 않음(인코딩 손상 원천 차단)
+   - `--single-transaction`으로 전체를 하나의 트랜잭션으로 묶어, 중간에 에러가 나면 전부
+     롤백되어 부분 반영으로 인한 데이터 꼬임을 방지(실패해도 재시도 시 정리 없이 그대로 재실행 가능)
+3. 완료 후 pgAdmin의 Supabase 서버에서 `User`/`GolfCourse`/`Round` 등 행 수가 로컬과 동일한지
+   확인. 로컬에 이미 `role=ADMIN` 계정이 있었다면 5번(관리자 지정) 단계는 생략 가능.
 4. (선택) 문제없이 이전됐으면 로컬 Docker DB는 계속 로컬 개발/테스트용으로 그대로 유지해도 되고,
    이후 로컬 대신 Supabase로 개발 대상을 옮길지는 재홍님 판단.
 

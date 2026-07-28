@@ -1803,3 +1803,33 @@ username이 실제 이 프로젝트에 할당된 값과 다름.
 
 - 재홍님이 이 방법으로 로컬→Supabase 데이터 이전을 시도할지, 아니면 이미 회원가입을
   진행해버렸는지 확인 필요. 이전 진행 시 결과(행 수 일치 여부) 확인 후 memory.md 갱신.
+
+
+## 110. 로컬→Supabase 데이터 이전 1차 시도 실패 — 원인 2가지 파악 및 수정 (2026-07-28)
+
+109번에서 안내한 방법(파일 경유 + `--disable-triggers`)으로 시도 → 다수 에러 발생. 원인 2가지 확인:
+
+1. **`--disable-triggers` 권한 문제**: `permission denied: "RI_ConstraintTrigger_*" is a system
+   trigger` — Supabase의 `postgres.<ref>` 풀러 접속 계정은 실제 superuser가 아니라서 FK 정합성용
+   내부 시스템 트리거를 비활성화할 권한이 없음. `--data-only`는 원래 FK 의존 순서를 지켜 정렬해서
+   내보내므로(이 스키마는 순환참조 없음, 79~82/CB 항목 기준 User→Account/Round,
+   GolfCourse→GolfCourseLoop→GolfCourseHole 전부 단순 DAG) 애초에 불필요한 옵션이었음.
+2. **PowerShell 파일 경유 시 한글 인코딩 손상**: `scorecaddie_data.sql > `로 저장 후 `Get-Content |
+   docker exec`로 파이프하는 과정에서 콘솔 인코딩 변환에 UTF-8 바이트가 깨짐 —
+   `GolfCourse`의 "extra data after last expected column"(주소 필드에 `???????` 깨진 문자),
+   `User`의 "invalid input syntax for type timestamp: USER"(컬럼 정렬까지 밀림) 등 연쇄 에러가
+   전부 이 인코딩 손상 때문. 이후 파생된 FK violation들(Account/Round/GolfCourseHole)은 선행
+   테이블(User/GolfCourseLoop)의 COPY가 실패해 0건이라 생긴 부수 효과.
+- **수정**: `pg_dump | psql` 파이프 전체를 `docker exec ... sh -c "..."`로 컨테이너 내부에서
+  실행 — PowerShell이 SQL 데이터 바이트를 전혀 안 거치게 해 인코딩 손상 원천 차단. `psql
+  --single-transaction`으로 실패 시 전체 롤백되게 해 재시도를 안전하게 만듦. `--disable-triggers`
+  제거.
+- 각 COPY는 실패 시 해당 COPY 전체가 롤백되는 것으로 보여(자동커밋 모드에서 statement 단위
+  트랜잭션), 1차 시도로 Supabase에 부분 데이터가 남아있을 가능성은 낮음 — 그래도 재시도 전
+  `User` 테이블 행 수 확인을 가이드에 안내함.
+- `doc/supabase-deploy-guide.md` 3-2절을 수정된 방법으로 갱신.
+
+### 다음 세션 시작 시
+
+- 재홍님이 수정된 명령으로 재시도 예정. 성공/실패 결과에 따라 후속 조치(성공 시 관리자 지정
+  단계 생략 가능 여부 확인, 실패 시 추가 디버깅).
