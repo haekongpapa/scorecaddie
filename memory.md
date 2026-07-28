@@ -1906,3 +1906,9 @@ PowerShell 인코딩 손상 → _prisma_migrations 충돌) 전부 해결하고 �
   시 `_prisma_migrations` 제외 + 컨테이너 내부 파이프 사용)을 재적용할 것.
 
 (2026-07-28 같은 날 후속 확인: 113번 커밋들을 포함해 재홍님이 `git push` 완료 — `origin/main`과 동기화됨.)
+
+**보안 정리(2026-07-28)**: `git status`에서 `db/scorecaddie_data.sql`(106~111번 데이터 이전
+시도 중 PowerShell로 생성된 덤프 파일, 이메일/비밀번호 해시 등 평문 포함)이 미추적 상태로 남아
+있는 것을 발견 → `.gitignore`에 `db/*.sql` 추가해 향후 실수로 커밋되는 것 방지
+(credentials.local.txt와 같은 이유). 파일 자체는 재홍님 로컬에만 있고 git에는 올라간 적 없음 —
+필요 없으면 로컬에서 직접 삭제 권장.
