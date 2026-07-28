@@ -1833,3 +1833,28 @@ username이 실제 이 프로젝트에 할당된 값과 다름.
 
 - 재홍님이 수정된 명령으로 재시도 예정. 성공/실패 결과에 따라 후속 조치(성공 시 관리자 지정
   단계 생략 가능 여부 확인, 실패 시 추가 디버깅).
+
+
+## 111. 로컬→Supabase 데이터 이전 2차 시도 — 거의 성공, _prisma_migrations 충돌만 해결 필요 (2026-07-28)
+
+110번 수정본(컨테이너 내부 파이프 + `--single-transaction`)으로 재시도 → 실제 데이터 테이블은
+전부 정상 COPY됨: User 2, Account 1, GolfCourse 652, GolfCourseLoop 9, GolfCourseHole 81,
+Round 4, HoleScore 72, Session/VerificationToken 0. 인코딩 손상 문제(110번)는 완전히 해결 확인.
+
+- 마지막에 `_prisma_migrations` 테이블 COPY에서 `duplicate key value violates unique constraint
+  "_prisma_migrations_pkey"` 발생 → `--single-transaction`이라 이 에러로 전체 롤백, 위 성공한
+  COPY들도 전부 취소됨(재시도 필요).
+- **원인/처리**: `_prisma_migrations`는 Prisma가 "이 DB에 어떤 마이그레이션이 적용됐는지"
+  자체 기록하는 내부 장부 테이블 — Supabase는 이미 `migrate deploy`로 스스로 정상 기록을
+  가진 상태라, 로컬 기록을 그대로 옮겨 넣는 것 자체가 잘못된 접근(두 DB의 마이그레이션 이력을
+  병합할 이유가 없고, 이후 `prisma migrate` 명령 동작에도 악영향 줄 수 있음). **해결**:
+  `pg_dump`에 `--exclude-table-data=_prisma_migrations` 추가해 이 테이블은 아예 덤프 대상에서
+  제외.
+- `doc/supabase-deploy-guide.md` 3-2절 명령에 `--exclude-table-data=_prisma_migrations` 반영.
+
+### 다음 세션 시작 시
+
+- 재홍님이 수정된 명령(`--exclude-table-data=_prisma_migrations` 추가)으로 재시도 예정 —
+  나머지 테이블들은 이미 1회 성공 확인했으므로 이번엔 끝까지 성공할 가능성 높음. 성공 확인되면
+  pgAdmin에서 행 수 재확인(User 2 / GolfCourse 652 등) → 로컬에 이미 ADMIN 계정이 있었는지
+  확인해 5번(관리자 지정) 단계 생략 여부 판단 → "Supabase 연결" 마일스톤 완료 처리.

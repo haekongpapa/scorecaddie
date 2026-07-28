@@ -125,12 +125,17 @@ Supabase로 옮기면 그 작업들을 그대로 승계**할 수 있음. 스키�
 2. 아래 한 줄로 덤프와 적재를 한 번에 실행 — **`<...>` 자리에 `app/.env`의 `DATABASE_URL` 값을
    그대로 복사**해서 넣을 것(직접 타이핑 금지, 106번 항목 실수 재발 방지):
    ```powershell
-   docker exec scorecaddie-postgres sh -c "pg_dump -U scorecaddie -d scorecaddie --data-only --no-owner | psql --single-transaction '<.env의 DATABASE_URL 값>'"
+   docker exec scorecaddie-postgres sh -c "pg_dump -U scorecaddie -d scorecaddie --data-only --no-owner --exclude-table-data=_prisma_migrations | psql --single-transaction '<.env의 DATABASE_URL 값>'"
    ```
    - `sh -c` 안에서 `pg_dump | psql`이 전부 컨테이너 내부적으로 실행되어 한글 데이터가 호스트
      PowerShell을 거치지 않음(인코딩 손상 원천 차단)
    - `--single-transaction`으로 전체를 하나의 트랜잭션으로 묶어, 중간에 에러가 나면 전부
      롤백되어 부분 반영으로 인한 데이터 꼬임을 방지(실패해도 재시도 시 정리 없이 그대로 재실행 가능)
+   - **`--exclude-table-data=_prisma_migrations` 필수**: 이 테이블은 Prisma가 "이 DB에 어떤
+     마이그레이션이 적용됐는지" 자체적으로 기록하는 내부 장부라, Supabase는 이미 `migrate
+     deploy`로 스스로 정상 기록을 갖고 있음. 로컬 기록을 그대로 복사해 넣으면(2026-07-28 실제
+     재현) `duplicate key value violates unique constraint "_prisma_migrations_pkey"`로 실패함
+     — 애초에 옮기면 안 되는 테이블이라 원천 제외하는 것이 맞는 처리.
 3. 완료 후 pgAdmin의 Supabase 서버에서 `User`/`GolfCourse`/`Round` 등 행 수가 로컬과 동일한지
    확인. 로컬에 이미 `role=ADMIN` 계정이 있었다면 5번(관리자 지정) 단계는 생략 가능.
 4. (선택) 문제없이 이전됐으면 로컬 Docker DB는 계속 로컬 개발/테스트용으로 그대로 유지해도 되고,
