@@ -1537,3 +1537,43 @@ Supabase DB 연결 전까지는 착수 보류(계획대로).
   테스트는 mock 전략(vi.mock 등) 논의 후 별도 진행 — 사용자 지정 대기.
 - coding-guidelines.md 적용 1~6단계 중 5단계까지 완료, 6단계는 Vitest 부분만 완료(Playwright는
   인프라 대기), 남은 건 사실상 Supabase 연결(별도 인프라 작업) 이후로 넘어감.
+
+
+## 98. prisma mock 테스트 2건 작성 — findDuplicateRound, processGolfCourseCsvRows (2026-07-28)
+
+사용자가 prisma mock 방식 설명을 요청 → 설명한 두 가지 방식(호출 1개는 손으로 vi.mock, 여러 개는
+vitest-mock-extended)을 실제로 적용.
+
+- **신규 파일**: `lib/services/round-duplicate.test.ts`(2케이스, `vi.mock`으로 prisma 직접 대체),
+  `lib/services/golf-course-upload.test.ts`(6케이스, `vitest-mock-extended`의 `mockDeep` 사용).
+- **수정 파일**: `package.json` devDependencies에 `vitest-mock-extended: 5.1.0` 추가(vitest
+  4.1.10과 호환되는 최신 버전, npm 레지스트리 확인 후 고정).
+- **막힌 부분과 해결**: `mockDeep<PrismaClient>()`처럼 `@prisma/client`의 실제 PrismaClient
+  타입을 그대로 넘기면 Prisma 7이 생성하는 groupBy/aggregate의 `...ScalarWhereWithAggregatesInput`
+  타입이 너무 복잡해 TS가 "circularly references itself"(TS2615)로 컴파일 실패함을 발견(실사용
+  확인). golf-course-upload.ts가 실제로 쓰는 메서드 4개(findMany/findUnique/count/create/upsert)만
+  담은 좁은 타입(`PrismaLike`)을 대신 mockDeep 대상으로 삼아 Prisma의 방대한 생성 타입 자체를
+  안 건드리는 방식으로 회피 — jest-mock-extended/vitest-mock-extended + Prisma 조합에서 흔한
+  우회법. `golf-course-upload.test.ts` 상단 주석에 이유를 남겨둠.
+- **검증 방식(중요, 다음 세션 참고)**: 이번엔 샌드박스의 `app/` 폴더에서 직접 `npm install`이
+  안 됐음 — `vitest-mock-extended` 추가 후 재설치 과정에서 npm이 패키지 압축 해제 중 임시
+  디렉터리 rename에 계속 실패(`ENOTEMPTY`)하는 문제가 반복 발생, 여러 차례 우회 시도(개별
+  충돌 디렉터리 정리 후 재시도, node_modules 전체 삭제 후 재설치 등) 끝에도 완전히 해결되지
+  않았고 중간에 `node_modules/vitest`가 손상돼 `npx vitest run`이 `Bus error`/모듈 못 찾음
+  등으로 실패하는 상태까지 감. 이는 이번 세션의 샌드박스 환경 한정 문제로 판단(1~6단계 진행
+  중 `npm install`은 여러 번 정상 동작했었음). **우회 검증**: `outputs/vitest-mini/`에 최소
+  `package.json`(vitest 4.1.10 + vitest-mock-extended 5.1.0만) + 두 테스트 대상 파일 + 두
+  테스트 파일 + prisma 스텁만 복사한 독립 환경을 새로 만들어 거기서 깨끗하게 설치·실행 —
+  8개 테스트 전부 통과 확인. `npx tsc --noEmit`도 (이 npm install 혼란 이전 시점에) 클린 확인.
+  실제 프로젝트 폴더(`app/`)의 `node_modules`는 현재 불완전한 상태로 남아있을 수 있음(git
+  추적 대상 아니라 커밋에는 영향 없음).
+
+### 다음 세션 시작 시
+
+- **사용자가 로컬에서 `app/node_modules` 폴더를 통째로 지우고 `npm install`을 새로 한 번
+  해주셔야 함**(이번 세션 샌드박스에서 겪은 설치 꼬임이 로컬에도 있을 가능성은 낮지만, 이
+  프로젝트 폴더의 node_modules 자체는 로컬 파일이라 별도로 새로 설치해야 함 — vitest-mock-extended가
+  새로 추가됐으니 한 번은 재설치 필요).
+- `npm run test`로 8개 테스트(round-duplicate 2개 + golf-course-upload 6개) 포함 전체
+  38개(기존 30개 + 신규 8개) 통과 확인 필요.
+- Playwright는 여전히 Supabase 연결 이후로 보류.

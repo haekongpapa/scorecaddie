@@ -39,6 +39,7 @@
     "dotenv": "16.4.7",
     "eslint": "9.18.0",
     "eslint-config-next": "15.1.6",
-    "vitest": "4.1.10"
+    "vitest": "4.1.10",
+    "vitest-mock-extended": "5.1.0"
   }
 }
