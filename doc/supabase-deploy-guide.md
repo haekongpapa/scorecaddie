@@ -70,6 +70,23 @@ Project Settings → Database → Connection string 메뉴에서 세 가지 방�
 5. `npx prisma studio` 로 Supabase에 테이블(User/GolfCourse/GolfCourseLoop/GolfCourseHole/Round/
    HoleScore 등)이 정상 생성됐는지 확인
 
+## 3-1. pgAdmin으로 접속 (선택)
+
+기존 로컬 Docker DB처럼 pgAdmin(`http://localhost:5050`)으로 Supabase도 확인 가능. `.env`에 넣은
+Session pooler 연결 문자열을 필드별로 나눠 입력하면 됨(문자열의 `%40`은 실제 비밀번호 필드에는
+인코딩 없이 원문 그대로 입력).
+
+1. pgAdmin 접속 → Servers 우클릭 → Register → Server
+2. **General 탭**: Name에 `Supabase - scorecaddie` 등 구분 가능한 이름 입력(기존 로컬 서버와 별도 항목으로 추가, 로컬 항목은 그대로 유지)
+3. **Connection 탭**:
+   - Host name/address: 연결 문자열의 `@` 뒤 ~ `:5432` 앞 부분 (예: `aws-0-ap-northeast-2.pooler.supabase.com`, 정확한 값은 `.env`의 `DATABASE_URL`에서 확인)
+   - Port: `5432`
+   - Maintenance database: `postgres`
+   - Username: `postgres.<project-ref>` (예: `postgres.sklyiwlevijfijsupynu`)
+   - Password: `credentials.local.txt`의 Supabase DB 비밀번호 원문(인코딩 없이 그대로, 예: `Paron@!72gg`)
+4. **SSL 탭**: SSL mode를 **Require**로 설정 (Supabase는 SSL 연결을 요구함 — 로컬 Docker DB와의 차이점)
+5. Save 후 좌측 트리에서 `postgres` DB 하위에 마이그레이션으로 생성된 테이블들이 보이면 정상
+
 ## 4. 최초 관리자 계정 지정
 
 아직 "최초 관리자 지정" 플로우가 없는 상태(미정 사항, 5번 항목) → Supabase Table Editor(웹
