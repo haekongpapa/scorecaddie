@@ -55,15 +55,27 @@ https://nodejs.org
 
 [db 실행/종료]
 docker 실행
+cd db
 docker compose up -d
 docker compose down
 
 [npm 실행]
+cd app
 npm run dev
 
-[prisma studio]
+[db-prisma studio]
 cd app
 npx prisma studio
 
+[db-pgAdmin 실행]
+cd db
+docker compose --profile tools up -d
+http://localhost:5050
+
 [vscode 설치]
 https://code.visualstudio.com
+
+
+[DB 스키마 변경]
+npx prisma migrate dev --name add_golf_course_sync_log
+npx prisma migrate deploy
