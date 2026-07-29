@@ -2182,4 +2182,35 @@ Vercel+Supabase)의 마지막 단계.
   확인 필요. 실패 시 에러 메시지 공유받아 원인 파악.
 - 완료되면 `doc/개발리스트.md` 8번(테스트 → 배포) 상태 갱신 검토, 배포/호스팅 예산·도메인
   미정 사항(275번 줄)도 이 시점에 재확인.
+
+
+## 118. Vercel 첫 배포 중 CVE-2025-66478 차단 → next 15.1.6→15.1.12 패치 (2026-07-29)
+
+117번 가이드로 Vercel 프로젝트 생성 + 환경변수 7종 등록까지 재홍님이 완료하고 Deploy 실행 →
+Vercel이 "Vulnerable version of Next.js detected" 경고와 함께 배포를 자동 차단. 원인은
+Next.js RSC 관련 CVE-2025-66478(영향 범위 15.0.0~16.0.6, 이 프로젝트의 15.1.6도 포함) —
+Vercel이 2026년부터 알려진 CVE에 해당하는 Next.js 버전의 신규 배포를 기본적으로 차단하는
+정책을 적용 중임을 WebSearch로 확인.
+
+- **조치**: `app/package.json`의 `next`/`eslint-config-next`를 같은 15.1.x 라인 내 최신 패치
+  `15.1.12`로 업그레이드(15.1.x 패치 중 가장 최신 — 15.1.9 이상이면 해당 CVE 자체는 해결되나,
+  이후 나온 패치까지 함께 반영). 코드 변경은 없음(패치 버전 bump만).
+  - `npm install --package-lock-only`로 `package-lock.json` 갱신 — 전체 `npm install`은
+    이 세션에서도 여러 차례 45초 타임아웃에 걸려 완주 못 함(114번 항목과 동일한 유형의
+    샌드박스 시간 제약, `--package-lock-only`는 node_modules를 안 건드려 상대적으로
+    빨라 이번엔 타임아웃 직전에 성공적으로 완료된 것으로 추정 — lockfile 반영 확인함).
+  - `npx tsc --noEmit` 클린 확인(타입 레벨에서는 이상 없음).
+  - 이번에도 `npm run build`/`npm run dev` 실직접 실행 검증은 샌드박스 제약으로 못 함 —
+    **재홍님이 재배포 시 Vercel 빌드 로그로 실제 통과 여부 확인 필요**.
+- git 커밋은 101번 우회법(`mv .git/index.lock .git/index.lock.stale_<timestamp>`)으로 정상
+  진행(`593bbd6`). push는 이번에도 재홍님이 로컬에서 직접 진행.
+
+### 다음 세션 시작 시
+
+- 재홍님이 push 후 Vercel 재배포 → 이번엔 CVE 차단 없이 빌드가 성공하는지, 성공하면 4~6번
+  절차(스모크 테스트, Google OAuth 리다이렉트 URI 등록)로 이어서 진행할 것.
+- 만약 Vercel이 또 다른 CVE(예: CVE-2026-23864 — 15.1.x 라인에는 패치가 없고 15.6/16.x
+  대에만 있다는 정보를 검색 중 확인했음, 아직 이 프로젝트에 직접 영향 있는지 미확인)를 새로
+  지적하면, 이번처럼 우선 같은 minor 라인 내 최신 패치로 대응 시도하고 그래도 막히면 minor/major
+  업그레이드(React 19 / next-auth beta 호환성 검토 필요) 여부를 재홍님과 논의.
   넘어가면 됨.
