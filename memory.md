@@ -2315,8 +2315,15 @@ https://scorecaddie.vercel.app/** — WebFetch로 랜딩 페이지 정상 렌더
    `id`/`startedAt`/`createdAt` 컬럼 — 스키마 그대로). 이 세션에서 SQL 내용 확인 후 커밋 완료.
    실행 전 `admin/golf-courses` 페이지에서 `The table public.GolfCourseSyncLog does not exist`
    런타임 에러가 한 번 났었는데(당연한 순서 — 마이그레이션 전이라 스키마와 실제 DB가 안 맞았던
-   것), 마이그레이션 실행 후 해결됨. **운영 DB(Supabase)에는 아직 `npx prisma migrate deploy`
-   미실행 — Vercel 배포본은 다음 배포 전에 이 명령이 필요.**
+   것), 마이그레이션 실행 후 해결됨.
+   **정정(같은 날)**: 처음엔 "운영 DB(Supabase)에는 별도로 `migrate deploy`가 더 필요하다"고
+   잘못 안내했었음 — 이 프로젝트는 105번 항목(2026-07-28)에서 로컬 Docker Postgres를 완전히
+   버리고 **로컬 개발·Vercel Preview·Vercel Production이 Supabase DB 하나를 그대로
+   공유**하는 구조로 전환됨(`doc/vercel-deploy-guide.md`의 "Preview 환경에 같은 운영 DB를
+   물리는 것에 대한 주의" 문구가 이 구조를 명시). 즉 `app/.env`의 `DATABASE_URL`을 그대로 둔
+   채 실행한 `prisma migrate dev`가 이미 Supabase(운영 DB)에 바로 적용된 것 — **별도
+   `migrate deploy` 불필요, 이 항목은 완전히 종료.** 다음에 또 스키마 변경이 필요할 때도 이
+   전제(단일 공유 DB) 그대로 안내할 것.
 2. `npm run test:e2e`로 8개 시나리오 재실행(특히 `rounds-new.spec.ts`가 콤보박스 상호작용으로
    바뀐 부분, `admin-sync.spec.ts`가 증분 조건 추가 후에도 그대로 통과하는지 — 목 서버는
    쿼리 파라미터를 무시하고 고정 응답하므로 이론상 영향 없어야 함).
