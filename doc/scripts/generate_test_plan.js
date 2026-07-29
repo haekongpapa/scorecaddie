@@ -494,6 +494,58 @@ resultTableSlide(
   ]
 );
 
+// ── 12. 버그 수정 이력 — Playwright ────────────────────────────────────
+// 2026-07-29: 시나리오 1~4를 재홍님 로컬에서 실행하는 과정(115번 항목)에서 발견·수정된
+// 버그 2건을 테스트 결과와 별도 슬라이드로 기록. 앱 코드 버그 1건(접근성 개선 겸함) +
+// 테스트 코드 셀렉터 버그 1건.
+{
+  const s = pres.addSlide();
+  s.background = { color: WHITE };
+  sectionTitle(s, "버그 수정 이력 — Playwright", "시나리오 1~4 로컬 실행 중 발견 · 수정된 항목");
+
+  const header = ["버그", "발견 파일", "원인", "수정"];
+  const data = [
+    [
+      "\"골프장\" 선택 시 30초 타임아웃",
+      "src/components/RoundStep1.tsx\n(e2e/rounds-new.spec.ts)",
+      "select와 label이 htmlFor/id로 연결돼 있지 않아 getByLabel(\"골프장\")이 요소를 찾지 못함",
+      "id=\"round-course\"로 label-select 명시적 연결 (접근성 개선 겸함)",
+    ],
+    [
+      "/rounds 목록 확인 단계 실패\n(strict violation → hidden)",
+      "e2e/rounds-new.spec.ts",
+      "getByText(course.name)이 필터용 <select><option>(hidden)까지 함께 매칭",
+      "실제 라운드 카드 링크(RoundListItem)로 좁힘: getByRole(\"link\", { name })",
+    ],
+  ];
+
+  const rowsForTable = [header, ...data].map((r, idx) => r.map((c) => ({
+    text: c,
+    options: idx === 0
+      ? { bold: true, color: WHITE, fill: { color: PRIMARY }, fontSize: 12 }
+      : { color: TEXT_DARK, fill: { color: idx % 2 === 0 ? CARD_BG : WHITE }, fontSize: 11, valign: "top" },
+  })));
+
+  s.addTable(rowsForTable, {
+    x: 0.6, y: 1.95, w: 12.1, h: 4.6,
+    colW: [2.5, 2.6, 3.7, 3.3],
+    border: { type: "none" },
+    autoPage: false,
+    valign: "top",
+    margin: [6, 8, 6, 8],
+  });
+
+  s.addText(
+    "※ 두 건 모두 앱 동작 자체의 결함이 아니라 (1) 접근성 마크업 누락, (2) 테스트 셀렉터의 범위가 " +
+    "지나치게 넓었던 문제였습니다. 수정 후 재실행하여 시나리오 1~4 전부 통과를 확인했습니다.",
+    {
+      x: 0.6, y: 6.68, w: 12.1, h: 0.4,
+      fontFace: FONT_BODY, fontSize: 11, italic: true, color: TEXT_MUTED, margin: 0,
+    }
+  );
+  pageFooter(s, "ScoreCaddie 테스트 계획서  ·  05 테스트 결과 관리");
+}
+
 pres.writeFile({ fileName: "ScoreCaddie_테스트계획서.pptx" }).then(() => {
   console.log("done");
 });
