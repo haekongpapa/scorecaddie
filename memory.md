@@ -2144,4 +2144,42 @@ Playwright 결과 표 8개 시나리오 전부 "통과"로 갱신, 03/04절(진�
   로컬 목 서버 패턴(`e2e/mocks/external-api-mock-server.mjs` + env 오버라이드)은 앞으로
   서버사이드에서 외부 API를 호출하는 새 기능을 테스트할 때도 그대로 재사용 가능.
 - 특별히 남은 후속 과제는 없음 — 다음 세션은 재홍님이 새로 지시하는 기능 개발/버그 수정으로
+  이어질 예정.
+
+
+## 117. Vercel 배포 진행방법 검토 — `doc/vercel-deploy-guide.md` 작성 (2026-07-29)
+
+재홍님이 "Vercel에 앱 배포 진행, 진행방법 검토해줘"로 요청. Supabase 연결(100~113번)과
+Playwright e2e 8개 시나리오 전체 통과(114~116번)가 끝난 상태라 배포 스택 결정(88번,
+Vercel+Supabase)의 마지막 단계.
+
+- **사전 점검 중 실제 코드 수정 1건**: `app/package.json`에 `postinstall: "prisma generate"`
+  스크립트가 없던 것을 발견 — Vercel 빌드 캐시 특성상 이게 없으면 `next build`가
+  `@prisma/client did not initialize` 류 에러로 실패하는 경우가 흔한 Prisma 공식 알려진
+  이슈라 선제적으로 추가함(사용자 확인 없이 바로 반영 — 위험 없는 표준 권장사항).
+- **그 외 확인한 안전 요소**(수정 불필요, 문서에만 기록): `@prisma/adapter-pg` 방식이라
+  Prisma 엔진 바이너리(`binaryTargets`) 문제 없음 / NextAuth v5는 Vercel 환경에서 trustHost
+  자동 처리라 `AUTH_URL` 별도 설정 불필요 / 미들웨어가 이미 Edge 안전한 `auth.config.ts`만
+  사용하도록 분리돼 있어 그대로 호환.
+- **환경변수 7종 확인**(`app/.env`에서 실제 존재 확인, 문서/커밋에는 값 미기재):
+  `DATABASE_URL`/`AUTH_SECRET`/`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/
+  `PUBLIC_DATA_API_KEY`/`WEATHER_API_KEY`/`KAKAO_REST_API_KEY`.
+- **신규 파일**: `doc/vercel-deploy-guide.md` — `doc/supabase-deploy-guide.md`와 동일한
+  컨벤션(이 샌드박스는 `vercel.com`도 네트워크 차단이라 계정/대시보드 조작은 재홍님이 직접
+  진행). 프로젝트 생성(Root Directory를 `app`으로 지정하는 게 핵심 — 저장소 루트가 아님) →
+  환경변수 등록(Preview 환경에 같은 운영 DB를 물리는 것에 대한 주의 포함) → Google OAuth
+  프로덕션 리다이렉트 URI 추가 → 첫 배포 확인 → 스모크 테스트 순.
+- **로컬 빌드(`npm run build`) 직접 검증은 이번에도 실패**: `/tmp`로 복사 후 시도했으나 이
+  Cowork 세션은 매 bash 호출이 독립 프로세스로 격리돼(백그라운드 프로세스가 다음 호출로
+  이어지지 않음) 45초 타임아웃 안에 `npm install`조차 못 끝냄 — 114번 항목과는 다른 종류의
+  샌드박스 제약(그때는 FUSE, 이번엔 호출 간 격리). 그래서 postinstall 추가가 실제로 빌드
+  실패를 막는지는 **재홍님이 Vercel 첫 배포 시 빌드 로그로 최종 확인 필요**.
+
+### 다음 세션 시작 시
+
+- 재홍님이 `doc/vercel-deploy-guide.md`를 따라 Vercel 프로젝트 생성 + 환경변수 등록 +
+  Google 리다이렉트 URI 추가까지 진행한 뒤, 첫 배포 성공 여부(빌드 로그, 스모크 테스트 결과)
+  확인 필요. 실패 시 에러 메시지 공유받아 원인 파악.
+- 완료되면 `doc/개발리스트.md` 8번(테스트 → 배포) 상태 갱신 검토, 배포/호스팅 예산·도메인
+  미정 사항(275번 줄)도 이 시점에 재확인.
   넘어가면 됨.
