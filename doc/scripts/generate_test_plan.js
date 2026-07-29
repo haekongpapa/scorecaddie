@@ -468,16 +468,26 @@ resultTableSlide(
 // 2026-07-28: 총 38개 테스트(7개 파일) 전부 통과 — 로컬 npm run test로 재확인 완료.
 
 // ── 11. 결과 관리 — Playwright ─────────────────────────────────────────
+// 2026-07-29: 1~4번 시나리오는 id/pw 테스트 전용 계정(e2e/fixtures/test-account.ts) +
+// global-setup/teardown 기반으로 실제 구현 완료. 다만 이번 작업 세션(Cowork 샌드박스)에서는
+// (1) Supabase DB 호스트, (2) Playwright Chromium 다운로드 CDN이 둘 다 네트워크 allowlist에
+// 막혀 있어 실제 브라우저로 통과 여부를 이 자리에서 확인하지 못했다 — 그래서 "통과"가 아니라
+// "작성완료"로 표기한다. 사용자 PC/CI처럼 두 네트워크가 열려있는 환경에서 `npm run test:e2e`
+// 실행 후 실제 결과로 갱신해줘야 한다. (tsc --noEmit / playwright test --list / 로컬 디스크
+// 사본에서의 npm run dev·vitest 정상 동작은 이번 세션에서 확인함 — memory.md 참고)
 resultTableSlide(
   "테스트 결과 — Playwright",
   "E2E 시나리오 실행 결과를 여기에 누적 기록합니다",
   ["시나리오", "파일", "상태", "최근 실행일", "비고"],
   [
-    ["로그인", "e2e/login.spec.ts", "예정", "-", "테스트 전용 로그인 경로 필요"],
-    ["라운드 등록 2-Step", "e2e/round-create.spec.ts", "예정", "-", "Supabase 연결 완료 — 착수 가능"],
-    ["라운드 상세·삭제", "e2e/round-delete.spec.ts", "예정", "-", "-"],
-    ["관리자 CSV 업로드", "e2e/admin-upload.spec.ts", "예정", "-", "-"],
-    ["관리자 공공데이터 동기화", "e2e/admin-sync.spec.ts", "예정", "-", "외부 API 목 서버 권장"],
+    ["로그인", "e2e/login.spec.ts", "작성완료", "2026-07-29", "샌드박스 네트워크 제한으로 실행 미검증(구현 완료)"],
+    ["골프장 목록 조회", "e2e/courses.spec.ts", "작성완료", "2026-07-29", "샌드박스 네트워크 제한으로 실행 미검증(구현 완료)"],
+    ["라운드 등록 2-Step", "e2e/rounds-new.spec.ts", "작성완료", "2026-07-29", "샌드박스 네트워크 제한으로 실행 미검증(구현 완료)"],
+    ["라운드 상세·삭제", "e2e/rounds-delete.spec.ts", "작성완료", "2026-07-29", "샌드박스 네트워크 제한으로 실행 미검증(구현 완료)"],
+    ["관리자: 루프·Par 관리", "e2e/admin-loop-par.spec.ts", "예정", "-", "관리자 role 세팅 필요"],
+    ["관리자: CSV 업로드", "e2e/admin-upload.spec.ts", "예정", "-", "관리자 role 세팅 필요"],
+    ["관리자: 공공데이터 동기화", "e2e/admin-sync.spec.ts", "예정", "-", "외부 API 목 서버 권장"],
+    ["관리자: 지오코딩 실행", "e2e/admin-geocode.spec.ts", "예정", "-", "카카오 API 목 처리 권장"],
   ]
 );
 

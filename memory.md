@@ -1912,3 +1912,95 @@ PowerShell 인코딩 손상 → _prisma_migrations 충돌) 전부 해결하고 �
 있는 것을 발견 → `.gitignore`에 `db/*.sql` 추가해 향후 실수로 커밋되는 것 방지
 (credentials.local.txt와 같은 이유). 파일 자체는 재홍님 로컬에만 있고 git에는 올라간 적 없음 —
 필요 없으면 로컬에서 직접 삭제 권장.
+
+
+## 114. Playwright e2e 셋업 — 시나리오 1~4 구현 완료, 실행 검증은 샌드박스 네트워크 제한으로 보류 (2026-07-29)
+
+Playwright e2e를 처음부터 셋업하고, 우선 시나리오 8개 중 핵심 사용자 플로우 4개(로그인 / 골프장
+목록 조회 / 라운드 등록 2-Step / 라운드 상세·삭제)를 구현했다. 관리자 4개 시나리오(CSV 업로드,
+공공데이터 동기화, 지오코딩, 루프·Par 관리)는 이번 세션 범위 밖(외부 API 목/ADMIN 계정 세팅
+필요)으로 예정 상태 그대로 남겨뒀다.
+
+**id/pw 테스트 계정 + 자동 정리 아키텍처** (재홍님이 요청한 핵심 요구사항):
+- `app/e2e/fixtures/test-account.ts` — `TEST_EMAIL`("e2e-tester@scorecaddie.test")/`TEST_PASSWORD`
+  상수 단일 소스, `E2E_TEST_EMAIL`/`E2E_TEST_PASSWORD` 환경변수로 override 가능.
+- `app/e2e/fixtures/db.ts` — global-setup/teardown과 일부 spec이 공유하는 PrismaClient 생성
+  헬퍼. src/lib/prisma.ts와 동일하게 `@prisma/adapter-pg`로 DATABASE_URL을 명시 전달해야 함
+  (Prisma 7 WASM 엔진은 datasource.url을 자동으로 안 읽음 — src/lib/prisma.ts 주석 참고, 이 부분을
+  놓치면 PrismaClient 생성 시점에 바로 크래시한다).
+- `app/e2e/global-setup.ts` — 실행 전 동일 이메일의 기존 User를 방어적으로 먼저 지우고(이전
+  실행이 teardown 없이 끊긴 경우 대비), `bcryptjs`(auth.ts와 동일 패키지)로 해시한 새 User를 만듦.
+- `app/e2e/global-teardown.ts` — 이 User를 다시 지움 → Account/Session/Round(→HoleScore) 전부
+  cascade로 함께 정리(prisma/schema.prisma의 onDelete: Cascade). GolfCourse/GolfCourseLoop/
+  GolfCourseHole(공공데이터 공용 참조 데이터)는 생성/수정/삭제 전혀 하지 않음 — 라운드 등록
+  테스트는 이미 등록돼 있는 루프를 `findFirst({ where: { loops: { some: {} } } })`로 찾아 재사용.
+- `app/e2e/auth.setup.ts` — Playwright 공식 권장 "setup 프로젝트" 패턴. `/login` 폼을 실제로 거쳐
+  `e2e/.auth/user.json`에 storageState 저장. `playwright.config.ts`의 "chromium" 프로젝트가 이걸
+  기본으로 재사용해서 매 spec마다 로그인할 필요가 없음. `login.spec.ts`만 로그인 폼 자체를
+  검증해야 하므로 `test.use({ storageState: { cookies: [], origins: [] } })`로 override.
+- `app/e2e/.auth/`, `app/test-results/`, `app/playwright-report/`를 루트 `.gitignore`에 추가
+  (storageState에 실제 세션 토큰이 들어있어 커밋 금지).
+
+**시나리오별 spec** (전부 실제 페이지 컴포넌트/API route를 먼저 Read하고 실제 DOM에 맞춰 작성 —
+`getByRole`/`getByLabel`/`getByText` 위주, `src/app/login/page.tsx`·`courses/page.tsx`·
+`rounds/new/page.tsx`·`rounds/[id]/page.tsx`와 그 하위 컴포넌트 RoundStep1/RoundStep2/
+CourseSearchList/RoundActions 기준):
+- `login.spec.ts`: 정상 로그인 → `/dashboard` 리다이렉트, 오답 비밀번호 → "이메일 또는
+  비밀번호가 올바르지 않습니다." 노출 + `/login` 유지.
+- `courses.spec.ts`: 실제 렌더링된 첫 카드 이름을 그대로 검색어로 써서 결과가 좁혀지는지,
+  존재하지 않는 검색어로 빈 상태 문구가 뜨는지, 공공/민간/전체 필터 탭이 에러 없이 동작하는지
+  확인 — 골프장 이름을 하드코딩하지 않아 어떤 실제 데이터셋에서도 재사용 가능.
+- `rounds-new.spec.ts`: Step1(코스 선택, 9홀, 스코어 카드 이동) → Step2(1~2번 홀 저장 →
+  `POST /api/rounds`로 라운드 지연 생성 확인) → "라운드 상세" 링크로 실제 생성 확인 → `/rounds`
+  목록에도 나타나는지 확인. 루프 등록된 골프장이 DB에 없으면 `test.skip`으로 명확히 건너뜀.
+- `rounds-delete.spec.ts`: 등록 플로우는 위에서 이미 검증했으므로 여기선 Prisma로 라운드를
+  직접 시딩(어차피 teardown이 cascade로 지움) → 상세 페이지 확인 → 삭제 버튼(confirm() 다이얼로그
+  자동 수락) → `/rounds`로 리다이렉트 + DB에서 실제로 사라졌는지 + 상세 URL 직접 접근 시 404까지 확인.
+- `app/playwright.config.ts`: `testDir: "./e2e"`, globalSetup/globalTeardown, "setup"→"chromium"
+  프로젝트 의존성, `webServer`가 `npm run dev`를 직접 관리(`reuseExistingServer: true`).
+- `app/package.json`: `@playwright/test@1.62.0`(devDependency), `"test:e2e": "playwright test"`.
+
+**이번 세션에서 실제로 실행 검증을 못 한 이유 — 이 Cowork 샌드박스 자체의 제약 3가지(중요, 정직하게
+기록)**:
+1. **Supabase Postgres 호스트가 네트워크 allowlist에 막힘**: `aws-1-ap-northeast-2.pooler.
+   supabase.com:5432`로 HTTP CONNECT(`403 blocked-by-allowlist`)/SOCKS5(`0x02 Connection not
+   allowed by ruleset`) 둘 다 명시적으로 차단됨. root/sudo 없음, `/etc/hosts` 수정 불가, UDP DNS도
+   막혀 있어 우회 경로 없음 — 이 샌드박스에서는 실제 DB에 붙는 그 어떤 스크립트도(global-setup
+   포함) 애초에 동작할 수 없다.
+2. **Playwright Chromium 다운로드 CDN도 같은 allowlist에 막힘**: `cdn.playwright.dev`에서
+   `403 Connection blocked by network allowlist` — `npx playwright install chromium` 실패.
+   시스템에 미리 설치된 Chromium/Chrome도 전혀 없어(`which`/`find` 전부 빈 결과) 대체 수단 없음.
+3. **(부수적으로 발견) 마운트된 저장소 경로 자체가 FUSE라 네이티브 빌드 도구가 Bus error로
+   죽음**: `app/`가 mount된 `/sessions/.../mnt/ScoreCaddie` 위에서 `npm run dev`·`npx vitest run`을
+   그대로 돌리면 SWC/esbuild 등 네이티브 바이너리가 mmap하다 `Bus error (core dumped)`로 즉시
+   죽는다(`mount` 확인 결과 `type fuse`). **검증**: `/tmp`(ext4, 로컬 디스크)로 저장소를 복사해
+   똑같이 돌려보니 `npm run dev`도, `npx vitest run`(38/38 통과)도 완전히 정상 동작 — 즉 앱/이번에
+   작성한 코드 자체의 문제가 아니라 이 세션의 마운트 방식 문제. `npx tsc --noEmit`·
+   `npx playwright test --list`처럼 무거운 네이티브 빌드가 없는 명령은 마운트된 경로에서도 문제없이
+   동작함(`tsc --noEmit` 클린, `--list`로 6개 테스트/5개 파일/setup→chromium 의존성 구조 정상 확인).
+
+이 세 가지가 겹쳐서 **실제 브라우저로 4개 spec을 진짜로 통과시켜보는 것 자체가 이 세션 안에서는
+불가능**했다. 그래서 (1) DB에 테스트 계정이 실제로 남았는지/깨끗이 지워졌는지도 이번 세션에서는
+직접 확인 못 했고, (2) `doc/scripts/generate_test_plan.js`의 결과 표는 지시받았던 "통과"가 아니라
+"작성완료"(구현 완료·실행 미검증, 이 문서 자체에 이미 정의된 상태값)로 표기했다 — 재홍님 PC나
+CI처럼 Supabase/Playwright CDN이 정상적으로 열려있는 환경에서 `npm run test:e2e`를 돌려 실제
+통과/실패로 갱신해야 진짜 완료 처리할 수 있다. `doc/ScoreCaddie_테스트계획서.pptx`도 이 표(8개
+시나리오 전부, 기존엔 5개만 있고 "골프장 목록 조회"가 빠져 있었음)로 재생성해뒀다(`doc/`에
+`npm install pptxgenjs` 임시 설치 후 실행 — 113번과 동일 컨벤션, `doc/node_modules`는 FUSE
+`rm -rf` EPERM으로 못 지워서 대신 `.gitignore`에 추가함).
+
+### 다음 세션 시작 시
+
+- **가장 먼저**: 재홍님 PC(또는 GitHub Actions 등 CI)에서 `cd app && npm install &&
+  npx playwright install chromium && npm run test:e2e` 실행 — 4개 spec이 실제로 통과하는지 확인.
+  실패하면 셀렉터/타이밍 이슈일 가능성이 높음(이번 세션엔 실제 브라우저로 단 한 번도 돌려보지
+  못했으므로 100% 장담 못 함) — 특히 `rounds-new.spec.ts`는 "전반/후반 루프가 등록된 골프장"이
+  실제 DB에 있어야 스킵되지 않고 돌아가니, 스킵되면 관리자 화면에서 루프를 하나 등록해줄 것.
+- 통과 확인되면 `doc/scripts/generate_test_plan.js` 결과 표의 "작성완료"를 실제 "통과"(또는 실패
+  시 "실패" + 원인)로 갱신하고 `node generate_test_plan.js`(`doc/`에서 실행, pptxgenjs 필요)로
+  pptx 재생성.
+- 실행 후 `e2e-tester@scorecaddie.test` User가 실제로 0건인지 Supabase에서 재확인 권장(이번
+  세션은 DB 접근 자체가 막혀 있어 대신 확인 못 함) — global-teardown이 정상 동작했다면 자동으로
+  없어야 정상.
+- 그다음이 시나리오 5~8(관리자: 루프·Par 관리 / CSV 업로드 / 공공데이터 동기화 / 지오코딩) —
+  ADMIN role 테스트 계정 세팅과 카카오/공공데이터/기상청 API mock 방식부터 정해야 함.
