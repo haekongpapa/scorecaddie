@@ -120,6 +120,19 @@ model GolfCourse {
   @@unique([externalOrgCd, externalMngNo])
 }
 
+// 골프장 공공데이터 동기화 실행 이력 — "증분 동기화(cond[DAT_UPDT_PNT::GTE])" 기준 시각을
+// 정확히 추적하기 위한 전용 체크포인트. GolfCourse.updatedAt(Prisma @updatedAt)은 지오코딩
+// 배치 등 동기화 이외의 작업도 같이 갱신하므로 "마지막 동기화 시각" 근사치로 쓰기엔 부정확함
+// (2026-07-29, 스코어 등록/공공데이터 업로드/지오코딩 기능 수정 중 도입).
+// startedAt은 배치를 시작한 시각(KST 기준으로 포맷해 API에 전달)이며, 페이지네이션이 도중에
+// 실패해 전체를 못 돌았을 때는 이 레코드 자체를 만들지 않는다 — 체크포인트를 과거에 묶어둬
+// 다음 실행이 그 구간을 다시 커버하게 하기 위함(lib/services/golf-course-sync.ts 참고).
+model GolfCourseSyncLog {
+  id        String   @id @default(cuid())
+  startedAt DateTime
+  createdAt DateTime @default(now())
+}
+
 // 골프장을 구성하는 9홀 단위 루프(구간). (2026-07-16 신규 — GolfCourseLoop 도입)
 // 단순 18홀 골프장은 보통 "전반"/"후반" 2개 루프로만 구성되고, 27/36홀 골프장은
 // 동/서/남 코스처럼 3개 이상의 루프를 갖고 라운드마다 그중 2개를 조합해 18홀을 만든다.

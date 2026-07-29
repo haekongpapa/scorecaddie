@@ -29,13 +29,14 @@ export default async function AdminGolfCoursesPage() {
     redirect("/dashboard");
   }
 
-  // "최종 업데이트"(공공 데이터 업로드 최종 실행 시각)는 별도 이력 테이블 없이,
-  // 공공데이터 출처(externalOrgCd 존재)로 생성/수정된 골프장의 최신 updatedAt으로 추정한다.
-  // (이 값을 변경하는 다른 관리 기능이 아직 없어 근사치가 아니라 실제 값과 일치함)
-  const latestSynced = await prisma.golfCourse.findFirst({
-    where: { externalOrgCd: { not: null } },
-    orderBy: { updatedAt: "desc" },
-    select: { updatedAt: true },
+  // "최종 업데이트"(공공 데이터 업로드 최종 실행 시각)는 GolfCourseSyncLog(전용 체크포인트)의
+  // 최신 startedAt을 그대로 쓴다. (2026-07-29 변경) 예전에는 별도 이력 테이블 없이
+  // "externalOrgCd가 있는 GolfCourse의 최신 updatedAt"으로 근사했으나, 지오코딩 배치도 같은
+  // 행의 updatedAt을 갱신해서 실제 마지막 동기화 시각보다 미래로 밀릴 수 있는 문제가 있었다
+  // (golf-course-sync.ts 상단 주석/스키마 주석 참고).
+  const lastSyncLog = await prisma.golfCourseSyncLog.findFirst({
+    orderBy: { startedAt: "desc" },
+    select: { startedAt: true },
   });
 
   const courses = await prisma.golfCourse.findMany({
@@ -82,7 +83,7 @@ export default async function AdminGolfCoursesPage() {
 
       <PublicDataSyncCard
         initialLastUpdatedAt={
-          latestSynced ? formatDateTime(latestSynced.updatedAt) : null
+          lastSyncLog ? formatDateTime(lastSyncLog.startedAt) : null
         }
       />
 

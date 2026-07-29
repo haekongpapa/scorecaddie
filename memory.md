@@ -2239,3 +2239,90 @@ https://scorecaddie.vercel.app/** — WebFetch로 랜딩 페이지 정상 렌더
 - 세션이 꽤 길어졌으니(100번대 후반) 다음 새 세션에서는 이 memory.md를 처음부터 다 읽기보다
   최근 항목(110번 이후) 위주로 훑고 시작하는 것을 권장 — 필요 시 요약/압축 논의 가능.
   넘어가면 됨.
+
+
+## 120. 기능 수정 3건 — 스코어 등록 화면 골프장 필터/콤보박스, 공공데이터 증분 동기화, 지오코딩·동기화 전체화면 로딩 차단 (2026-07-29)
+
+119번(Vercel 배포) 마일스톤 종료 후 재홍님이 세 가지 기능 수정을 요청 → 먼저 관련 코드를
+전부 읽고 검토 의견을 드린 뒤(반대로 바로 구현 시작하지 않고 리스크·설계 결정 포인트를
+먼저 확인), AskUserQuestion으로 3가지를 확정하고 나서 구현 진행.
+
+**확정된 결정사항**:
+1. 공공데이터 증분 동기화(GTE) 기준 시각 — `GolfCourse.updatedAt` 근사 대신 **전용
+   `GolfCourseSyncLog` 테이블 신규 도입**(지오코딩 배치가 같은 행의 updatedAt을 같이
+   갱신해서 근사치가 부정확해지는 문제를 원천 차단).
+2. `cond[SALS_STTS_CD::EQ]=01`(영업상태: 영업/정상)은 **공공데이터 API 호출 조건에는 넣지
+   않고**, 대신 골프장을 화면에 노출하는 조회 쿼리(스코어 등록 화면의 골프장 목록) 쪽에
+   `businessStatus` 필터로 추가 — 동기화 자체는 영업상태 무관하게 원본 데이터를 그대로 보존.
+3. 좌표 지오코딩의 "필요한 골프장만 조회" 요구사항은 이미 `runGeocodingBatch()`가
+   `where: { needsGeocoding: true }`로 구현하고 있어 **추가 수정 없이 현재 로직 그대로 유지**.
+4. 골프장 select → 검색형 콤보박스 전환에 따라 깨지는 Playwright e2e도 함께 갱신.
+
+**구현 내용**:
+- **`prisma/schema.prisma`**: `GolfCourseSyncLog` 모델 신규(`id`/`startedAt`/`createdAt`) —
+  동기화 배치를 시작한 시각(KST)을 기록하는 전용 체크포인트. GolfCourse 모델 바로 아래에 배치.
+- **`lib/services/golf-course-sync.ts`**: `runGolfCourseSync(serviceKey, { fullSync })`로
+  시그니처 변경. `fullSync=false`(기본)면 `GolfCourseSyncLog` 최신 `startedAt`을 GTE로,
+  배치 시작 시각을 LT로 삼아 `cond[DAT_UPDT_PNT::GTE]`/`cond[DAT_UPDT_PNT::LT]`를 모든 페이지
+  요청에 붙인다(체크포인트가 아직 없는 최초 실행은 조건 없이 전체 조회). **페이지네이션이
+  끝까지 완주됐을 때만** 새 체크포인트를 기록하고, 중간에 페이지 요청이 실패해 멈췄으면
+  기록하지 않아(=예전 체크포인트 유지) 다음 실행이 놓친 구간을 다시 커버하게 함(데이터 누락
+  방지 우선, 약간의 중복 재조회는 감수). KST 포맷 변환은 `lib/weather/kma.ts`의
+  `toKstWallClock`/`getUTC*` 패턴을 그대로 재사용(`formatKstDateTime`). `SALS_STTS_CD` 조건은
+  추가하지 않음(위 결정사항 2번).
+- **`api/admin/golf-courses/sync/route.ts`**: 요청 바디에서 `fullSync`(boolean)를 읽어
+  전달, 응답에 `incomplete`/`usedIncremental` 필드 추가.
+- **`admin/golf-courses/page.tsx`**: "최종 업데이트" 표시를 `GolfCourse.updatedAt` 최댓값
+  근사 대신 `GolfCourseSyncLog` 최신 `startedAt`으로 변경.
+- **`components/PublicDataSyncCard.tsx`**: "전체" 체크박스 추가(기본 미선택), 체크 상태를
+  POST 바디(`fullSync`)로 전달. 실행 중(`uploading`)에는 `fixed inset-0 z-50` 오버레이로 화면
+  전체를 덮어 다른 관리 기능(지오코딩/CSV 업로드/Par 편집 등)을 동시에 조작하지 못하게 막음.
+  `incomplete=true`일 때 토스트에 "일부 페이지 조회 실패로 중단됨" 안내 추가.
+- **`components/GeocodeBatchCard.tsx`**: 대상 조회 로직은 무변경, 실행 중(`running`)에
+  동일한 전체화면 오버레이만 추가.
+- **`app/rounds/new/page.tsx`**: Step1 골프장 조회 쿼리에
+  `where: { loops: { some: {} }, businessStatus: "영업/정상" }` 추가 — 루프 미등록/비영업
+  골프장은 스코어 등록 화면에 아예 노출되지 않음.
+- **`components/RoundStep1.tsx`**: 골프장 `<select>`를 검색형 콤보박스(ARIA
+  combobox/listbox, 인풋 타이핑 → 실시간 클라이언트 필터링 → 클릭/Enter로 확정)로 전면 교체.
+  650여 개 규모라 서버 재조회 없이 `CourseSearchList.tsx`와 동일한 클라이언트 필터링 전제로
+  충분하다고 판단. **구현 중 발견한 부수 버그를 함께 수정**: 6번(골프장 상세) "이 골프장에서
+  스코어 등록"에서 넘어오는 `initialCourseId`가 새 서버 필터(루프+영업상태)에 걸려 courses
+  목록에 없을 경우, 기존 로직대로면 `courses[0]`(전혀 다른 골프장)으로 조용히 대체되어
+  사용자가 의도하지 않은 골프장에 스코어를 등록할 위험이 있었음 — `initialCourseUnavailable`
+  플래그를 추가해 이 경우 아무 것도 선택하지 않은 채 "선택하신 골프장은 현재 라운드 등록이
+  불가능합니다" 안내를 보여주고 사용자가 직접 다시 검색하게 바꿈.
+- **`e2e/rounds-new.spec.ts`**: 골프장 픽스처 조회에 `businessStatus: "영업/정상"` 조건
+  추가(실제 화면 노출 조건과 일치시킴), `getByLabel("골프장").selectOption(...)`을
+  `.fill(course.name)` + `getByRole("option", { name: course.name }).click()`으로 교체.
+- **문서 갱신**: `doc/admin-golfcourse-sync.md`에 GTE/LT 조건·"전체" 옵션·`GolfCourseSyncLog`
+  도입 배경 반영(이 문서 86~92번 줄이 이미 "지오코딩이 근사치를 오염시킬 수 있다"는 문제를
+  예견하고 `PublicDataSyncLog` 도입을 미리 제안해뒀던 것을 그대로 실현한 셈). `doc/pages.md`
+  7-1절에 콤보박스 전환·필터링된 골프장 목록·`initialCourseUnavailable` 안내 반영.
+
+**검증**: `npx prisma generate`(샌드박스에서 `node_modules/.prisma/client` EPERM 우회 없이
+이번엔 바로 성공, 소요 ~41초 — 네트워크 상태에 따라 편차 있는 듯) → `npx tsc --noEmit`
+클린(EXIT 0). `eslint`는 이 프로젝트에 `eslint.config.js`/`.eslintrc.*`가 아예 없어(기존부터
+없던 상태, 이번 세션과 무관) `npx eslint .`/`npm run lint` 둘 다 즉시 설정 오류로 실패 —
+별도 이슈로 남겨둠(아래 "다음 세션" 참고). 로컬 DB 접근 불가라 실제 동기화/지오코딩/스코어
+등록 동작과 Playwright e2e 실행은 이번에도 검증 못함 — 재홍님 로컬 확인 필요.
+
+### 사용자 로컬 후속 조치 필요 (중요 — 순서대로)
+
+1. `git pull` 후 `cd app && npx prisma migrate dev --name add_golf_course_sync_log` 실행
+   (`GolfCourseSyncLog` 테이블 생성 — 스키마에 새 모델이 추가된 것뿐이라 기존 데이터에는
+   영향 없음). 이후 운영 DB(Supabase)에는 기존 관례대로 `npx prisma migrate deploy`.
+2. `npm run test:e2e`로 8개 시나리오 재실행(특히 `rounds-new.spec.ts`가 콤보박스 상호작용으로
+   바뀐 부분, `admin-sync.spec.ts`가 증분 조건 추가 후에도 그대로 통과하는지 — 목 서버는
+   쿼리 파라미터를 무시하고 고정 응답하므로 이론상 영향 없어야 함).
+3. 화면에서 직접 확인: (1) 스코어 등록 화면 골프장 콤보박스 타이핑 필터링/선택, (2) 11번
+   화면에서 "전체" 체크 안 한 채 업로드 실행 시 최초 1회는 전체 조회로 동작하고 이후부터
+   증분으로 좁혀지는지, "전체" 체크 시 매번 전체 조회되는지, (3) 동기화/지오코딩 실행 중
+   화면 전체가 덮여 다른 버튼이 안 눌리는지.
+4. (선택, 급하지 않음) `eslint.config.js` 부재로 린트가 아예 안 도는 상태 — 이번 세션
+   범위 밖이라 손대지 않았음, 별도로 정비할지 논의 필요.
+
+### 다음 세션 시작 시
+
+- 위 "사용자 로컬 후속 조치" 4가지 확인 결과 공유받으면 memory.md/doc 완료 표시로 갱신.
+- 그 외 특별히 대기 중인 후속 과제 없음(커스텀 도메인 연결은 여전히 선택 사항으로 보류 중).

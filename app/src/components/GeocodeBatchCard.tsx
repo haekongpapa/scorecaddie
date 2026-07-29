@@ -101,6 +101,18 @@ export default function GeocodeBatchCard({
           {toast}
         </div>
       )}
+
+      {/* 실행 중에는 화면 전체를 덮어 다른 관리 기능(공공 데이터 업로드/CSV 업로드/Par 편집 등)을
+          동시에 조작하지 못하게 막는다. 지오코딩 배치는 실사용 시 1분 넘게 걸린 이력이 있어
+          (BATCH_LIMIT 150건 * 요청 간 딜레이) 이 차단이 실제로 의미가 있다. (2026-07-29 신규) */}
+      {running && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/50">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-white border-t-transparent" />
+          <div className="text-[13px] font-semibold text-white">
+            좌표 지오코딩 실행 중입니다...
+          </div>
+        </div>
+      )}
     </div>
   );
 }

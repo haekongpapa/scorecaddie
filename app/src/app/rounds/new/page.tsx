@@ -58,7 +58,16 @@ export default async function RoundNewPage({
   // Step 1: 코스/홀수/일자 선택
   // ---------------------------------------------------------------------
   if (step !== "2") {
+    // 스코어 등록 화면에는 (1) 루프(전반/후반 등)가 실제로 등록된 골프장만, (2) 영업상태가
+    // "영업/정상"인 골프장만 노출한다. (2026-07-29 변경) SALS_STTS_CD=01 조건은 공공데이터
+    // 동기화 API 호출에는 넣지 않고 이 조회 쿼리 쪽에서 걸기로 확정됨(사용자 결정) — 동기화는
+    // 영업상태와 무관하게 원본 데이터를 그대로 보존하고, 사용자에게 실제로 라운드를 등록할 수
+    // 있는 골프장만 이 화면에서 걸러서 보여준다.
     const courses = await prisma.golfCourse.findMany({
+      where: {
+        loops: { some: {} },
+        businessStatus: "영업/정상",
+      },
       orderBy: { name: "asc" },
       select: {
         id: true,

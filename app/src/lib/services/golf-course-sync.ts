@@ -19,6 +19,17 @@ import { env } from "@/lib/config/env";
 // 좌표 변환(TM 중부원점 EPSG:5174 -> WGS84)은 lib/utils/geo.ts의 convertTmToWgs84()로 upsert
 // 시점에 바로 처리한다. rawCoordX/Y가 없거나 변환 결과가 대한민국 범위를 벗어나면
 // latitude/longitude를 null로 두고 needsGeocoding=true로 표시(주소 기반 지오코딩은 후속 과제).
+//
+// 증분 동기화(2026-07-29 신규): 기본은 "전체" 옵션 미선택 상태로, 마지막 동기화 이후 바뀐
+// 건만 가져오기 위해 cond[DAT_UPDT_PNT::GTE]/cond[DAT_UPDT_PNT::LT]를 함께 보낸다. 기준
+// 시각은 GolfCourse.updatedAt이 아니라 GolfCourseSyncLog(전용 체크포인트)에서 가져온다 —
+// updatedAt은 지오코딩 배치 등 동기화 이외의 작업도 같이 갱신해서 "마지막 동기화 시각"
+// 근사치로 쓰기엔 부정확하기 때문(스키마 주석 참고). "전체" 옵션을 선택하면 GTE/LT를 아예
+// 붙이지 않아 전체 목록을 다시 받아온다.
+// cond[SALS_STTS_CD::EQ]=01(영업상태: 영업/정상)은 이번 개편에서 API 호출 조건에는 넣지
+// 않기로 확정(2026-07-29, 사용자 결정) — 대신 화면에 노출하는 골프장 조회 쿼리 쪽
+// (app/rounds/new/page.tsx)에서 businessStatus 기준으로 필터링한다. 동기화 자체는 영업상태와
+// 무관하게 공공데이터 전체를 그대로 받아 DB에 보존한다.
 
 // 평소엔 실제 공공데이터포털 API를 호출하고, e2e 테스트 때만 env로 로컬 목 서버 주소로
 // 바꿔치기된다(env.ts 주석 참고) — 운영 코드 경로는 변화 없음.
@@ -27,6 +38,7 @@ const API_BASE_URL =
 const PAGE_SIZE = 100;
 const MAX_PAGES = 200; // 안전장치: totalCount 이상치로 인한 무한/과도 호출 방지 (최대 20,000건)
 const FETCH_TIMEOUT_MS = 10_000;
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 type ApiItem = {
   BPLC_NM?: string; // 사업장명(골프장명)
@@ -58,15 +70,44 @@ export type SyncRowError = { page: number; message: string };
 // field 존재 여부로 판별하는 유니언(이 프로젝트 strict:false 하에서 boolean 판별자가
 // 제대로 안 좁혀지는 문제 회피 — coding-guidelines.md §3 패턴).
 export type SyncResult =
-  | { totalCount: number; addedCount: number; updatedCount: number; errors: SyncRowError[] }
+  | {
+      totalCount: number;
+      addedCount: number;
+      updatedCount: number;
+      errors: SyncRowError[];
+      // 페이지네이션을 끝까지 완주하지 못했는지(네트워크 오류 등으로 중간에 멈췄는지) 여부.
+      // true면 이번 실행은 다음 증분 동기화의 체크포인트로 기록하지 않는다(runGolfCourseSync 참고).
+      incomplete: boolean;
+      usedIncremental: boolean; // 이번 호출이 실제로 GTE/LT를 붙였는지(응답 해석 참고용)
+    }
   | { fetchError: string };
 
-async function fetchPage(pageNo: number, serviceKey: string): Promise<ApiResponse> {
+// "지금(now)"을 KST 벽시계 기준 "YYYYMMDDHHMMSS" 문자열로 변환.
+// (lib/weather/kma.ts의 toKstWallClock/getUTC* 패턴과 동일한 방식 — 서버 프로세스의 로컬
+// 타임존이 배포 환경에 따라 UTC일 수 있어도 항상 KST로 고정하기 위함)
+function formatKstDateTime(d: Date): string {
+  const kst = new Date(d.getTime() + KST_OFFSET_MS);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${kst.getUTCFullYear()}${pad(kst.getUTCMonth() + 1)}${pad(kst.getUTCDate())}` +
+    `${pad(kst.getUTCHours())}${pad(kst.getUTCMinutes())}${pad(kst.getUTCSeconds())}`
+  );
+}
+
+async function fetchPage(
+  pageNo: number,
+  serviceKey: string,
+  condRange: { gte: string; lt: string } | null
+): Promise<ApiResponse> {
   const url = new URL(API_BASE_URL);
   url.searchParams.set("serviceKey", serviceKey);
   url.searchParams.set("pageNo", String(pageNo));
   url.searchParams.set("numOfRows", String(PAGE_SIZE));
   url.searchParams.set("returnType", "json");
+  if (condRange) {
+    url.searchParams.set("cond[DAT_UPDT_PNT::GTE]", condRange.gte);
+    url.searchParams.set("cond[DAT_UPDT_PNT::LT]", condRange.lt);
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -92,11 +133,35 @@ function normalizeItems(
   return Array.isArray(item) ? item : [item];
 }
 
-export async function runGolfCourseSync(serviceKey: string): Promise<SyncResult> {
+export async function runGolfCourseSync(
+  serviceKey: string,
+  options: { fullSync: boolean } = { fullSync: false }
+): Promise<SyncResult> {
+  const batchStartedAt = new Date();
+
+  // "전체" 미선택 시에만 증분 조건을 건다. 체크포인트가 아직 없으면(최초 실행) GTE 기준값이
+  // 없으므로 이번 한 번은 조건 없이 전체를 받아오고, 이번 실행이 정상 완주되면 체크포인트가
+  // 새로 생겨 다음 실행부터는 증분으로 전환된다.
+  let condRange: { gte: string; lt: string } | null = null;
+  const usedIncremental = !options.fullSync;
+  if (!options.fullSync) {
+    const lastCheckpoint = await prisma.golfCourseSyncLog.findFirst({
+      orderBy: { startedAt: "desc" },
+      select: { startedAt: true },
+    });
+    if (lastCheckpoint) {
+      condRange = {
+        gte: formatKstDateTime(lastCheckpoint.startedAt),
+        lt: formatKstDateTime(batchStartedAt),
+      };
+    }
+  }
+
   let addedCount = 0;
   let updatedCount = 0;
   const errors: SyncRowError[] = [];
   let totalCount = 0;
+  let incomplete = false;
 
   async function processPage(pageNo: number, page: ApiResponse) {
     const resultCode = page.response?.header?.resultCode;
@@ -166,7 +231,7 @@ export async function runGolfCourseSync(serviceKey: string): Promise<SyncResult>
   }
 
   try {
-    const firstPage = await fetchPage(1, serviceKey);
+    const firstPage = await fetchPage(1, serviceKey, condRange);
     totalCount = firstPage.response?.body?.totalCount ?? 0;
     await processPage(1, firstPage);
 
@@ -174,13 +239,14 @@ export async function runGolfCourseSync(serviceKey: string): Promise<SyncResult>
 
     for (let pageNo = 2; pageNo <= totalPages; pageNo++) {
       try {
-        const page = await fetchPage(pageNo, serviceKey);
+        const page = await fetchPage(pageNo, serviceKey, condRange);
         await processPage(pageNo, page);
       } catch (err) {
         errors.push({
           page: pageNo,
           message: err instanceof Error ? err.message : "페이지 요청 실패",
         });
+        incomplete = true;
         break; // 연속 페이지 요청 실패 시 중단하고 그때까지의 결과 반환(부분 성공 허용)
       }
     }
@@ -188,5 +254,12 @@ export async function runGolfCourseSync(serviceKey: string): Promise<SyncResult>
     return { fetchError: err instanceof Error ? err.message : String(err) };
   }
 
-  return { totalCount, addedCount, updatedCount, errors };
+  // 페이지네이션이 끝까지 완주됐을 때만 체크포인트를 새로 기록한다 — 중간에 멈췄으면 이번
+  // 배치 시작 시각을 체크포인트로 남기지 않고 예전 값을 유지해, 다음 실행이 놓친 구간을
+  // 다시 커버하게 한다(데이터 누락 방지가 우선, 약간의 중복 재조회는 감수).
+  if (!incomplete) {
+    await prisma.golfCourseSyncLog.create({ data: { startedAt: batchStartedAt } });
+  }
+
+  return { totalCount, addedCount, updatedCount, errors, incomplete, usedIncremental };
 }

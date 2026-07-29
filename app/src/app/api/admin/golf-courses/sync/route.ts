@@ -15,8 +15,11 @@ import { runGolfCourseSync } from "@/lib/services/golf-course-sync";
 // (coding-guidelines.md §4-2) — 이 파일은 인증 확인과 응답 포맷팅만 담당. 인증 체크를
 // requireAdminSession() 공용 헬퍼로 통합하지 않고 인라인으로 남겨둔 것도 그대로 유지
 // (이 admin API는 라우트가 1개뿐이라 굳이 통합할 실익이 적음, 기존 설계 그대로).
+//
+// 2026-07-29: "전체" 옵션 추가 — 요청 바디의 fullSync(boolean)를 그대로
+// runGolfCourseSync에 전달한다. 기본(전체 미선택/바디 없음)은 증분 동기화.
 
-export const POST = withApiHandler(async () => {
+export const POST = withApiHandler(async (req: Request) => {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
@@ -33,7 +36,10 @@ export const POST = withApiHandler(async () => {
     );
   }
 
-  const result = await runGolfCourseSync(serviceKey);
+  const body = await req.json().catch(() => null);
+  const fullSync = body?.fullSync === true;
+
+  const result = await runGolfCourseSync(serviceKey, { fullSync });
 
   if ("fetchError" in result) {
     return NextResponse.json(
@@ -50,6 +56,8 @@ export const POST = withApiHandler(async () => {
     updatedCount: result.updatedCount,
     skippedCount: result.errors.length,
     errors: result.errors.slice(0, 50),
+    incomplete: result.incomplete,
+    usedIncremental: result.usedIncremental,
     lastUpdatedAt: new Date().toISOString(),
   });
 });

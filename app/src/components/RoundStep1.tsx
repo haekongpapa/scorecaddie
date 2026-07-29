@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export type Step1Loop = { id: string; name: string };
@@ -23,10 +23,18 @@ export default function RoundStep1({
 }) {
   const router = useRouter();
 
+  // 6번(골프장 상세) "이 골프장에서 스코어 등록"에서 넘어온 initialCourseId가 필터링된
+  // courses 목록에 없을 수 있다(루프 미등록/비영업 상태 골프장 — 2026-07-29 서버 조회 조건
+  // 추가로 courses 자체가 이미 걸러져서 내려옴). 이 경우 courses[0]으로 조용히 대체해버리면
+  // 사용자가 의도한 것과 다른 골프장으로 스코어가 등록될 위험이 있어, 아무 것도 선택하지 않은
+  // 상태로 두고 안내 문구를 보여준다(아래 initialCourseUnavailable 참고).
+  const initialCourseUnavailable = Boolean(initialCourseId) && !courses.some((c) => c.id === initialCourseId);
   const [courseId, setCourseId] = useState<string>(
-    initialCourseId && courses.some((c) => c.id === initialCourseId)
+    initialCourseId && !initialCourseUnavailable
       ? initialCourseId
-      : courses[0]?.id ?? ""
+      : initialCourseId
+        ? ""
+        : courses[0]?.id ?? ""
   );
   const [holesPlayed, setHolesPlayed] = useState<9 | 18>(18);
   const [date, setDate] = useState(todayStr());
@@ -41,6 +49,60 @@ export default function RoundStep1({
 
   const [frontLoopId, setFrontLoopId] = useState<string>(loops[0]?.id ?? "");
   const [backLoopId, setBackLoopId] = useState<string>(loops[1]?.id ?? loops[0]?.id ?? "");
+
+  // 골프장 검색형 콤보박스(2026-07-29 신규 — 기존 <select> 대체) ────────────────────────
+  // 인풋에 타이핑한 글자로 실시간 필터링되고, 목록에서 클릭/엔터로 확정 선택하는 구조.
+  // courses가 이미 수백 개 규모라 클라이언트 필터링만으로 충분(서버 재조회 불필요,
+  // CourseSearchList.tsx의 클라이언트 필터링 패턴과 동일한 전제).
+  const [courseQuery, setCourseQuery] = useState(course?.name ?? "");
+  const [comboOpen, setComboOpen] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(0);
+  const comboWrapRef = useRef<HTMLDivElement>(null);
+
+  const filteredCourses = useMemo(() => {
+    const q = courseQuery.trim();
+    if (!q) return courses;
+    return courses.filter((c) => c.name.includes(q));
+  }, [courses, courseQuery]);
+
+  function selectCourse(next: Step1Course) {
+    handleCourseChange(next.id);
+    setCourseQuery(next.name);
+    setComboOpen(false);
+  }
+
+  function handleComboKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!comboOpen) {
+        setComboOpen(true);
+        return;
+      }
+      setHighlightIndex((i) => Math.min(i + 1, filteredCourses.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const target = filteredCourses[highlightIndex];
+      if (target) selectCourse(target);
+    } else if (e.key === "Escape") {
+      setComboOpen(false);
+      setCourseQuery(course?.name ?? "");
+    }
+  }
+
+  // 목록 밖 클릭 시 닫기 + 확정되지 않은 입력값은 마지막으로 선택된 골프장 이름으로 되돌림.
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (!comboWrapRef.current?.contains(e.target as Node)) {
+        setComboOpen(false);
+        setCourseQuery(course?.name ?? "");
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [course]);
 
   function handleCourseChange(nextId: string) {
     setCourseId(nextId);
@@ -167,20 +229,63 @@ export default function RoundStep1({
         </div>
       </div>
 
+      {initialCourseUnavailable && (
+        <p className="mb-2 -mt-1 text-[11.5px] font-semibold text-[#B85042]">
+          선택하신 골프장은 현재 라운드 등록이 불가능합니다(루프 미등록 또는 비영업 상태). 아래에서
+          다른 골프장을 검색해 선택해주세요.
+        </p>
+      )}
       <label htmlFor="round-course" className="mb-1 block text-xs font-semibold text-muted">골프장</label>
-      <select
-        id="round-course"
-        value={courseId}
-        onChange={(e) => handleCourseChange(e.target.value)}
-        className="mb-3.5 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm"
-      >
-        {courses.length === 0 && <option value="">등록된 골프장이 없습니다</option>}
-        {courses.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+      <div ref={comboWrapRef} className="relative mb-3.5">
+        <input
+          id="round-course"
+          type="text"
+          role="combobox"
+          aria-expanded={comboOpen}
+          aria-controls="round-course-listbox"
+          aria-autocomplete="list"
+          autoComplete="off"
+          placeholder={courses.length === 0 ? "등록된 골프장이 없습니다" : "골프장 이름 검색"}
+          disabled={courses.length === 0}
+          value={courseQuery}
+          onChange={(e) => {
+            setCourseQuery(e.target.value);
+            setComboOpen(true);
+            setHighlightIndex(0);
+          }}
+          onFocus={() => setComboOpen(true)}
+          onKeyDown={handleComboKeyDown}
+          className="w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm disabled:bg-card-bg disabled:text-muted"
+        />
+        {comboOpen && (
+          <ul
+            id="round-course-listbox"
+            role="listbox"
+            className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-line bg-white py-1 shadow-lg"
+          >
+            {filteredCourses.length === 0 ? (
+              <li className="px-3 py-2 text-[12.5px] text-muted">검색 결과가 없습니다.</li>
+            ) : (
+              filteredCourses.map((c, i) => (
+                <li key={c.id} role="option" aria-selected={c.id === courseId}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => selectCourse(c)}
+                    className={
+                      "block w-full px-3 py-2 text-left text-sm " +
+                      (i === highlightIndex ? "bg-card-bg2" : "bg-white") +
+                      (c.id === courseId ? " font-semibold text-primary" : "")
+                    }
+                  >
+                    {c.name}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        )}
+      </div>
 
       <label className="mb-1 block text-xs font-semibold text-muted">홀 수</label>
       <div className="mb-3.5 flex gap-0.5 rounded-lg bg-card-bg p-0.5">

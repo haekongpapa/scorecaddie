@@ -15,7 +15,19 @@ GET https://apis.data.go.kr/1741000/golf_courses/info
     &pageNo={페이지 번호}
     &numOfRows={페이지당 건수}
     &returnType=json
+    &cond[DAT_UPDT_PNT::GTE]={YYYYMMDDHHMMSS, "전체" 옵션 미선택 시에만}
+    &cond[DAT_UPDT_PNT::LT]={YYYYMMDDHHMMSS, "전체" 옵션 미선택 시에만}
 ```
+
+**증분 동기화 조건(2026-07-29 추가)**: "전체" 옵션(화면 체크박스, 기본 미선택)을 선택하지 않으면
+`cond[DAT_UPDT_PNT::GTE]`(마지막 동기화 시각)/`cond[DAT_UPDT_PNT::LT]`(이번 조회 시각)를 함께
+보내 그 사이에 데이터가 바뀐 레코드만 받아온다. "전체"를 선택하면 두 파라미터를 아예 붙이지 않고
+전체 목록을 다시 받는다. 자세한 기준 시각 관리 방식은 아래 "최종 업데이트 표시 값의 출처" 절 참고.
+
+`cond[SALS_STTS_CD::EQ]=01`(영업상태: 영업/정상)은 API 호출 조건에는 넣지 않기로 확정함
+(2026-07-29, 사용자 결정) — 동기화 자체는 영업상태와 무관하게 공공데이터를 있는 그대로 받아
+DB에 보존하고, 대신 화면에 골프장을 노출하는 조회 쿼리 쪽(`app/src/app/rounds/new/page.tsx`)에서
+`businessStatus` 기준으로 필터링한다.
 
 응답 구조: `response.header.resultCode`("0"=정상), `response.body.totalCount`(전체 건수),
 `response.body.items.item`(배열 또는 단일 객체 — 아래 함정 참고).
@@ -83,13 +95,23 @@ GET https://apis.data.go.kr/1741000/golf_courses/info
 7. **응답**: `{ totalCount, addedCount, updatedCount, skippedCount, errors[], lastUpdatedAt }`
 8. 화면(11번)에서는 `addedCount`/`updatedCount`를 토스트로, `lastUpdatedAt`을 카드의 "최종 업데이트" 텍스트로 표시
 
-## "최종 업데이트" 표시 값의 출처
+## "최종 업데이트" 표시 값의 출처 (2026-07-29 변경)
 
-별도 이력 테이블 없이, `GolfCourse.externalOrgCd IS NOT NULL`인 레코드 중 `updatedAt`이 가장 최신인
-값을 서버 컴포넌트에서 조회해 사용한다(`app/src/app/admin/golf-courses/page.tsx`). 공공데이터 출처
-골프장의 정보를 바꾸는 다른 관리 기능이 아직 없어서, 이 값은 근사치가 아니라 실제 "마지막 동기화 실행
-시각"과 정확히 일치한다. 추후 골프장 기본정보를 수정하는 별도 관리자 기능이 생기면 전용 이력 테이블
-(`PublicDataSyncLog` 등) 도입을 재검토해야 한다.
+전용 이력 테이블 `GolfCourseSyncLog`(`prisma/schema.prisma`)를 도입해 사용한다. 이전에는
+`GolfCourse.externalOrgCd IS NOT NULL`인 레코드 중 `updatedAt`이 가장 최신인 값으로 근사했으나,
+지오코딩 배치(`golf-course-geocode.ts`)도 같은 조건의 행(`latitude`/`longitude`/`needsGeocoding`)을
+갱신해서 "마지막 동기화 실행 시각"보다 미래로 밀릴 수 있는 문제가 있었다 — 지오코딩을 돌리면
+동기화를 안 했는데도 "최종 업데이트"가 갱신된 것처럼 보이고, 그 값을 그대로 `cond[DAT_UPDT_PNT::GTE]`
+기준으로 쓰면 실제로 공공데이터가 바뀐 구간을 건너뛰어 조용히 데이터가 누락되는 버그로 이어질 수
+있었다.
+
+`GolfCourseSyncLog.startedAt`은 동기화 배치를 시작한 시각(KST)이며, **페이지네이션이 끝까지
+완주됐을 때만** 새 레코드를 기록한다(`runGolfCourseSync()`). 중간에 페이지 요청이 실패해 멈췄으면
+이번 배치 시작 시각을 체크포인트로 남기지 않고 예전 값을 그대로 유지 — 다음 실행이 놓친 구간을
+자연스럽게 다시 커버하게 하기 위함(약간의 중복 재조회는 감수, 데이터 누락 방지가 우선).
+체크포인트가 아예 없는 최초 실행(또는 최초 실행이 매번 실패해 하나도 못 쌓인 경우)에는 GTE 조건
+없이(=사실상 전체) 한 번 받아오고, 정상 완주되면 그 시각이 다음 실행부터의 기준이 된다.
+"전체" 옵션으로 실행한 경우에도 완주 시 체크포인트는 갱신된다(다음 증분 실행이 그 시점부터 이어짐).
 
 ## 좌표 변환 (TM 중부원점 EPSG:5174 → WGS84, 2026-07-20 추가)
 

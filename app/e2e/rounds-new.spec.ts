@@ -4,15 +4,16 @@ import { createTestPrismaClient } from "./fixtures/db";
 // 3. 라운드 등록 2-Step — doc/ScoreCaddie_테스트계획서.pptx 우선 시나리오 3번(가장 핵심 플로우).
 // src/app/rounds/new/page.tsx + src/components/RoundStep1.tsx + RoundStep2.tsx 실제 구현 기준.
 //
-// Step1(코스/홀수/일자 선택)에는 "전반/후반 루프"가 등록된 골프장만 골라야 한다 — 루프가 없는
-// 골프장을 선택하면 Step2로 못 넘어간다(RoundStep1 안내 문구 참고). GolfCourse/GolfCourseLoop는
-// 공공데이터 기반 공용 참조 데이터라 이 테스트에서 새로 만들 수 없으므로, 이미 루프가 등록된
-// 골프장을 DB에서 찾아 그 이름으로 Step1의 셀렉트를 선택한다.
+// Step1(코스/홀수/일자 선택) 화면에는 서버 쿼리 단계에서 이미 "루프(전반/후반 등)가 등록되고
+// 영업상태가 '영업/정상'인 골프장"만 내려온다(2026-07-29 변경, src/app/rounds/new/page.tsx
+// 참고). GolfCourse/GolfCourseLoop는 공공데이터 기반 공용 참조 데이터라 이 테스트에서 새로
+// 만들 수 없으므로, 실제 화면에 노출되는 조건과 동일하게(loops.some + businessStatus) DB에서
+// 골프장을 찾아 그 이름으로 Step1의 골프장 검색 콤보박스를 선택한다.
 test.describe("라운드 등록 2-Step", () => {
   test("코스 선택 → 스코어 입력 2단계를 거쳐 라운드가 생성된다", async ({ page }) => {
     const prisma = createTestPrismaClient();
     const course = await prisma.golfCourse.findFirst({
-      where: { loops: { some: {} } },
+      where: { loops: { some: {} }, businessStatus: "영업/정상" },
       include: { loops: { orderBy: { sortOrder: "asc" } } },
     });
     await prisma.$disconnect();
@@ -28,7 +29,10 @@ test.describe("라운드 등록 2-Step", () => {
     await page.goto("/rounds/new");
     await expect(page.getByRole("heading", { name: "스코어 등록" })).toBeVisible();
 
-    await page.getByLabel("골프장").selectOption({ label: course.name });
+    // 2026-07-29: 골프장 select가 검색형 콤보박스(RoundStep1.tsx)로 바뀌어 selectOption() 대신
+    // 이름을 타이핑해 필터링한 뒤 드롭다운에 뜨는 옵션을 클릭하는 방식으로 선택한다.
+    await page.getByLabel("골프장").fill(course.name);
+    await page.getByRole("option", { name: course.name }).click();
     // 9홀만 채우면 되도록 홀 수를 9로 선택 — 테스트를 짧고 안정적으로 유지하기 위함.
     await page.getByRole("button", { name: "9홀" }).click();
 
