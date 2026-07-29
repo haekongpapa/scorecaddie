@@ -2004,3 +2004,54 @@ CI처럼 Supabase/Playwright CDN이 정상적으로 열려있는 환경에서 `n
   없어야 정상.
 - 그다음이 시나리오 5~8(관리자: 루프·Par 관리 / CSV 업로드 / 공공데이터 동기화 / 지오코딩) —
   ADMIN role 테스트 계정 세팅과 카카오/공공데이터/기상청 API mock 방식부터 정해야 함.
+
+
+## 115. Playwright e2e 시나리오 1~4 — 재홍님 로컬 실행으로 실제 통과 확인 + 셀렉터 버그 2건 수정 (2026-07-29)
+
+114번에서 구현만 하고 실행 검증을 못 했던 부분을 재홍님이 직접 로컬 PC에서 진행. 먼저
+Cowork 샌드박스의 네트워크 allowlist에 Supabase 호스트(`aws-1-ap-northeast-2.pooler.supabase.com`)를
+추가했지만 포트 5432(Postgres)가 `403 blocked-by-allowlist`로 계속 막혀 있음을 재확인(도메인
+allowlist가 포트 단위까지는 지원하지 않는 것으로 보임 — 관리 콘솔 자체의 제약일 가능성) →
+샌드박스에서의 실행은 포기하고, 원래 계획대로 재홍님 로컬 PC에서 직접
+`npm install && npx playwright install chromium && npm run test:e2e` 실행.
+
+**1차 실행 결과**: 6개 중 5개 통과, `rounds-new.spec.ts` 1개 실패.
+- **원인**: `RoundStep1.tsx`의 "골프장" `<label>`이 대응하는 `<select>`와 `htmlFor`/`id`로 연결돼
+  있지 않아(단순히 시각적으로 위에 놓인 것뿐) Playwright의 `getByLabel("골프장")`이 요소를 못
+  찾고 `selectOption` 호출이 30초 타임아웃으로 실패.
+- **수정**: `<label htmlFor="round-course">`/`<select id="round-course">`로 명시적 연결 —
+  접근성 개선까지 겸함. `npx tsc --noEmit` 클린 확인.
+
+**2차 실행 결과**: 같은 테스트가 다른 지점에서 실패 — `/rounds` 목록 페이지에서
+`getByText(course.name)`이 strict mode violation(라운드 카드 텍스트 + 필터용
+`<select><option>` 두 곳에 매칭). `.first()`로 고쳤더니 이번엔 그 `.first()`가 "DOM 순서상 먼저
+나오지만 화면엔 안 보이는(hidden)" 필터 `<option>`을 집어 `toBeVisible()`이 실패.
+- **수정**: `RoundListItem.tsx`가 실제로 `next/link`의 `<Link>`(앵커)로 렌더링되는 걸 확인하고,
+  `getByText(course.name).first()` 대신 `getByRole("link", { name: new RegExp(course.name) }).first()`로
+  스코프를 좁힘 — 숨은 필터 옵션과 겹칠 여지 자체를 제거.
+
+**3차 실행(최종)**: 재홍님이 "ok 6개 모두 통과했어" 확인 — **시나리오 1~4(로그인/골프장 목록
+조회/라운드 등록 2-Step/라운드 상세·삭제) 전부 실제 브라우저로 통과 검증 완료**. id/pw
+테스트 계정(`e2e-tester@scorecaddie.test`) 생성→테스트 실행→global-teardown으로 계정 삭제(cascade로
+관련 Round/HoleScore/Account/Session까지 정리)가 로컬 환경에서 실제로 한 번 완주된 것도 이번이
+처음(114번까지는 이 사이클 자체를 한 번도 못 돌려봄).
+
+- **문서 갱신**: `doc/scripts/generate_test_plan.js`의 Playwright 결과 표를 4개 시나리오
+  "작성완료" → "통과"(2026-07-29, 위 두 버그 수정 이력 비고에 요약)로 갱신하고
+  `node generate_test_plan.js` 재실행해 `doc/ScoreCaddie_테스트계획서.pptx` 재생성. `python-pptx`로
+  표 셀 내용을 직접 읽어 실제 반영 확인(육안 검수 대신 — 이번 세션은 pptx를 여는 GUI가 없어
+  텍스트 레벨로만 검증, 레이아웃 자체는 113/114번에서 이미 여러 번 검증된 동일 템플릿이라 텍스트
+  갱신만으로는 오버플로우 등 리스크가 낮다고 판단).
+- **DB 정리 재확인**: 이번 세션에서도 샌드박스가 Supabase 5432 포트를 막고 있어 직접 조회로
+  `e2e-tester@scorecaddie.test` 0건인지 확인은 못 했음 — 다만 global-teardown이 playwright의
+  표준 라이프사이클 훅이라 전체 그린 실행 후 정상 동작했을 가능성이 높음. 신경 쓰이면 재홍님이
+  Supabase 대시보드나 pgAdmin에서 `User` 테이블에 해당 이메일이 없는지 한 번 확인해봐도 좋음.
+
+### 다음 세션 시작 시
+
+- Playwright 핵심 플로우(1~4번) 마일스톤 완전 종료. 다음은 시나리오 5~8(관리자: 루프·Par 관리 /
+  CSV 업로드 / 공공데이터 동기화 / 지오코딩) — ADMIN role 테스트 계정 세팅과 카카오/공공데이터/
+  기상청 API mock 전략부터 정해야 함(114번 항목과 동일한 다음 단계, 아직 미착수).
+- Cowork 샌드박스는 Supabase Postgres(5432) 접근이 계속 막혀 있음 — allowlist에 호스트는
+  등록했지만 포트 단위 제어가 안 되는 것으로 보임(115번). e2e/DB 관련 작업의 최종 실행 검증은
+  당분간 재홍님 로컬 PC에서 진행하는 흐름을 기본으로 삼을 것.

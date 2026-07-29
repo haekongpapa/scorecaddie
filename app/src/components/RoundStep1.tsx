@@ -167,8 +167,9 @@ export default function RoundStep1({
         </div>
       </div>
 
-      <label className="mb-1 block text-xs font-semibold text-muted">골프장</label>
+      <label htmlFor="round-course" className="mb-1 block text-xs font-semibold text-muted">골프장</label>
       <select
+        id="round-course"
         value={courseId}
         onChange={(e) => handleCourseChange(e.target.value)}
         className="mb-3.5 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm"

@@ -55,11 +55,15 @@ test.describe("라운드 등록 2-Step", () => {
     await page.getByRole("link", { name: "라운드 상세" }).click();
     await expect(page).toHaveURL(/\/rounds\/[^/]+$/);
     await expect(page.getByRole("heading", { name: "라운드 상세" })).toBeVisible();
-    await expect(page.getByText(course.name)).toBeVisible();
+    await expect(page.getByText(course.name).first()).toBeVisible();
 
     // 목록 화면(/rounds)에도 방금 만든 라운드가 나타나는지 확인.
+    // course.name 텍스트는 필터용 <select><option>에도 존재해(hidden) getByText만으로는
+    // strict mode 위반/hidden 매칭이 나므로, 실제 라운드 카드 링크(RoundListItem)로 좁혀서 확인한다.
     await page.goto("/rounds");
     await expect(page.getByRole("heading", { name: "스코어 조회" })).toBeVisible();
-    await expect(page.getByText(course.name).first()).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: new RegExp(course.name) }).first()
+    ).toBeVisible();
   });
 });

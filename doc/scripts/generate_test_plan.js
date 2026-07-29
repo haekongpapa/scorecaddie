@@ -469,21 +469,24 @@ resultTableSlide(
 
 // ── 11. 결과 관리 — Playwright ─────────────────────────────────────────
 // 2026-07-29: 1~4번 시나리오는 id/pw 테스트 전용 계정(e2e/fixtures/test-account.ts) +
-// global-setup/teardown 기반으로 실제 구현 완료. 다만 이번 작업 세션(Cowork 샌드박스)에서는
-// (1) Supabase DB 호스트, (2) Playwright Chromium 다운로드 CDN이 둘 다 네트워크 allowlist에
-// 막혀 있어 실제 브라우저로 통과 여부를 이 자리에서 확인하지 못했다 — 그래서 "통과"가 아니라
-// "작성완료"로 표기한다. 사용자 PC/CI처럼 두 네트워크가 열려있는 환경에서 `npm run test:e2e`
-// 실행 후 실제 결과로 갱신해줘야 한다. (tsc --noEmit / playwright test --list / 로컬 디스크
-// 사본에서의 npm run dev·vitest 정상 동작은 이번 세션에서 확인함 — memory.md 참고)
+// global-setup/teardown 기반으로 구현 완료. Cowork 샌드박스는 Supabase DB 호스트/Playwright
+// Chromium 다운로드 CDN이 네트워크 allowlist에 막혀 있어 그 자리에서는 실행 검증을 못 했으나,
+// 재홍님 로컬 PC에서 `npm run test:e2e` 실행 후 6개 테스트(setup 1개 + 시나리오 5개) 전부
+// 통과 확인. 다만 1차 실행에서 셀렉터 버그 2건 발견되어 수정 후 재확인함:
+// (1) RoundStep1.tsx의 "골프장" <select>가 <label>과 htmlFor/id로 연결 안 돼 있어
+//     getByLabel("골프장")이 못 찾고 타임아웃 — id="round-course" 연결로 수정.
+// (2) rounds-new.spec.ts에서 /rounds 목록 확인 시 getByText(course.name)이 필터용
+//     <select><option>(hidden)까지 같이 매칭돼 strict violation/hidden 실패 —
+//     실제 라운드 카드 링크(RoundListItem, <Link>)로 좁혀서(getByRole("link", ...)) 수정.
 resultTableSlide(
   "테스트 결과 — Playwright",
   "E2E 시나리오 실행 결과를 여기에 누적 기록합니다",
   ["시나리오", "파일", "상태", "최근 실행일", "비고"],
   [
-    ["로그인", "e2e/login.spec.ts", "작성완료", "2026-07-29", "샌드박스 네트워크 제한으로 실행 미검증(구현 완료)"],
-    ["골프장 목록 조회", "e2e/courses.spec.ts", "작성완료", "2026-07-29", "샌드박스 네트워크 제한으로 실행 미검증(구현 완료)"],
-    ["라운드 등록 2-Step", "e2e/rounds-new.spec.ts", "작성완료", "2026-07-29", "샌드박스 네트워크 제한으로 실행 미검증(구현 완료)"],
-    ["라운드 상세·삭제", "e2e/rounds-delete.spec.ts", "작성완료", "2026-07-29", "샌드박스 네트워크 제한으로 실행 미검증(구현 완료)"],
+    ["로그인", "e2e/login.spec.ts", "통과", "2026-07-29", "재홍님 로컬 npm run test:e2e로 확인"],
+    ["골프장 목록 조회", "e2e/courses.spec.ts", "통과", "2026-07-29", "재홍님 로컬 npm run test:e2e로 확인"],
+    ["라운드 등록 2-Step", "e2e/rounds-new.spec.ts", "통과", "2026-07-29", "셀렉터 버그 2건 수정 후 통과(비고 참고)"],
+    ["라운드 상세·삭제", "e2e/rounds-delete.spec.ts", "통과", "2026-07-29", "재홍님 로컬 npm run test:e2e로 확인"],
     ["관리자: 루프·Par 관리", "e2e/admin-loop-par.spec.ts", "예정", "-", "관리자 role 세팅 필요"],
     ["관리자: CSV 업로드", "e2e/admin-upload.spec.ts", "예정", "-", "관리자 role 세팅 필요"],
     ["관리자: 공공데이터 동기화", "e2e/admin-sync.spec.ts", "예정", "-", "외부 API 목 서버 권장"],
