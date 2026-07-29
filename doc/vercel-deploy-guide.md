@@ -114,15 +114,26 @@ Google 리다이렉트 URI도 커스텀 도메인 기준으로 다시 등록해�
 아직 미정 사항(개발리스트.md 5번)이므로, 우선은 Vercel 기본 도메인(`*.vercel.app`)으로
 시작하고 이후 필요 시 진행해도 무방합니다.
 
+## 7. 배포 완료 (2026-07-29)
+
+배포 도메인: **https://scorecaddie.vercel.app/**
+
+첫 배포 시도에서 Vercel이 CVE-2025-66478(Next.js 15.0.0~16.0.6 영향)을 감지해 자동 차단 →
+`next`/`eslint-config-next`를 15.1.6에서 같은 15.1.x 라인 최신 패치 `15.1.12`로 올려 해결
+(memory.md 118번 항목 참고, 코드 변경 없이 버전 bump만). 재배포 성공 후 Google OAuth
+리다이렉트 URI 등록 → 스모크 테스트(이메일/구글 로그인, 골프장 조회, 스코어 등록·조회·상세,
+관리자 화면) 전부 재홍님이 직접 확인 완료.
+
 ## 체크리스트
 
-- [ ] `app/package.json`에 `postinstall: "prisma generate"` 추가 — 2026-07-29 완료(코드 반영됨)
-- [ ] Vercel 계정 생성 / GitHub(`haekongpapa/scorecaddie`) 연동
-- [ ] 프로젝트 Import 시 Root Directory `app` 지정
-- [ ] 환경변수 7종 등록(Production 범위)
-- [ ] Google Cloud Console에 프로덕션 리다이렉트 URI/원본 추가
-- [ ] 첫 배포 성공 확인(빌드 로그 확인)
-- [ ] 스모크 테스트(로그인 2종/골프장 조회/스코어 등록/관리자 화면)
-- [ ] (선택) 커스텀 도메인 연결
+- [x] `app/package.json`에 `postinstall: "prisma generate"` 추가 — 2026-07-29
+- [x] Vercel 계정 생성 / GitHub(`haekongpapa/scorecaddie`) 연동 — 2026-07-29
+- [x] 프로젝트 Import 시 Root Directory `app` 지정 — 2026-07-29
+- [x] 환경변수 7종 등록(Production 범위) — 2026-07-29
+- [x] (배포 중 추가 발견) CVE-2025-66478 대응: next 15.1.6 → 15.1.12 — 2026-07-29
+- [x] Google Cloud Console에 프로덕션 리다이렉트 URI/원본 추가 — 2026-07-29
+- [x] 첫 배포 성공 확인(빌드 로그 확인) — 2026-07-29
+- [x] 스모크 테스트(로그인 2종/골프장 조회/스코어 등록/관리자 화면) — 2026-07-29
+- [ ] (선택, 미착수) 커스텀 도메인 연결 — 예산/도메인 보유 여부 미정(개발리스트.md 5번)
 
-체크리스트 진행 중 막히는 부분이 생기면 에러 메시지나 상황을 그대로 알려주세요.
+**Vercel 배포 마일스톤 완료.** 이후 문제가 생기면 이 문서에 이어서 기록.
