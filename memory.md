@@ -2309,9 +2309,14 @@ https://scorecaddie.vercel.app/** — WebFetch로 랜딩 페이지 정상 렌더
 
 ### 사용자 로컬 후속 조치 필요 (중요 — 순서대로)
 
-1. `git pull` 후 `cd app && npx prisma migrate dev --name add_golf_course_sync_log` 실행
-   (`GolfCourseSyncLog` 테이블 생성 — 스키마에 새 모델이 추가된 것뿐이라 기존 데이터에는
-   영향 없음). 이후 운영 DB(Supabase)에는 기존 관례대로 `npx prisma migrate deploy`.
+1. ~~`git pull` 후 `cd app && npx prisma migrate dev --name add_golf_course_sync_log` 실행~~
+   — **완료(2026-07-29 같은 날)**. 재홍님이 로컬에서 실행 → 마이그레이션
+   `20260729071015_add_golf_course_sync_log` 생성/적용 확인(`GolfCourseSyncLog` 테이블,
+   `id`/`startedAt`/`createdAt` 컬럼 — 스키마 그대로). 이 세션에서 SQL 내용 확인 후 커밋 완료.
+   실행 전 `admin/golf-courses` 페이지에서 `The table public.GolfCourseSyncLog does not exist`
+   런타임 에러가 한 번 났었는데(당연한 순서 — 마이그레이션 전이라 스키마와 실제 DB가 안 맞았던
+   것), 마이그레이션 실행 후 해결됨. **운영 DB(Supabase)에는 아직 `npx prisma migrate deploy`
+   미실행 — Vercel 배포본은 다음 배포 전에 이 명령이 필요.**
 2. `npm run test:e2e`로 8개 시나리오 재실행(특히 `rounds-new.spec.ts`가 콤보박스 상호작용으로
    바뀐 부분, `admin-sync.spec.ts`가 증분 조건 추가 후에도 그대로 통과하는지 — 목 서버는
    쿼리 파라미터를 무시하고 고정 응답하므로 이론상 영향 없어야 함).
