@@ -335,6 +335,7 @@ export default function GolfCourseParEditor({
               >
                 <span className="text-[11px] text-muted">{idx + 1}홀</span>
                 <select
+                  aria-label={`${idx + 1}홀 Par`}
                   value={par}
                   onChange={(e) =>
                     handleParChange(idx, Number(e.target.value))

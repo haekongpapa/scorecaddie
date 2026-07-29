@@ -7,3 +7,10 @@
 export const TEST_EMAIL = process.env.E2E_TEST_EMAIL ?? "e2e-tester@scorecaddie.test";
 export const TEST_PASSWORD = process.env.E2E_TEST_PASSWORD ?? "E2eTest!2026";
 export const TEST_NAME = "E2E 테스트 계정";
+
+// 관리자 화면(시나리오 5~8: 루프·Par 관리/CSV 업로드/공공데이터 동기화/지오코딩) 전용 계정.
+// 일반 시나리오 1~4용 TEST_EMAIL과 role만 다르게 완전히 분리한다 — 한 계정으로 겸용하면
+// role 전환 로직이 테스트 사이에 끼어들어 순서 의존성이 생기기 때문.
+export const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "e2e-admin@scorecaddie.test";
+export const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "E2eAdmin!2026";
+export const ADMIN_NAME = "E2E 관리자 테스트 계정";

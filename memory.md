@@ -2055,3 +2055,93 @@ allowlist가 포트 단위까지는 지원하지 않는 것으로 보임 — 관
 - Cowork 샌드박스는 Supabase Postgres(5432) 접근이 계속 막혀 있음 — allowlist에 호스트는
   등록했지만 포트 단위 제어가 안 되는 것으로 보임(115번). e2e/DB 관련 작업의 최종 실행 검증은
   당분간 재홍님 로컬 PC에서 진행하는 흐름을 기본으로 삼을 것.
+
+
+## 116. Playwright e2e 시나리오 5~8(관리자 4종) 구현 + 전체 8개 시나리오 실행 검증 완료 (2026-07-29)
+
+115번 이후 재홍님이 "시나리오 5~8 진행에 필요한 사항은 뭔가?"로 남은 범위를 확인 → 필요 사항
+설명(ADMIN 계정, 서버사이드 fetch라 page.route() 불가 → 목 서버+env 오버라이드 필요, 데이터
+격리 전략) → "단계별로 진행해" 지시로 4개 시나리오를 하나씩 구현·검증. **이걸로 8개 시나리오
+전부 실제 브라우저로 통과 확인 완료** — Playwright e2e 핵심 작업 마일스톤 종료.
+
+**공통 인프라 확장**:
+- `e2e/fixtures/test-account.ts`에 `ADMIN_EMAIL`/`ADMIN_PASSWORD`(role=ADMIN) 추가 — 기존
+  `TEST_EMAIL`(role=USER)과 완전히 분리된 별도 계정. `e2e/admin-auth.setup.ts` 신규(기존
+  `auth.setup.ts`와 동일 패턴)로 별도 storageState(`e2e/.auth/admin.json`) 저장.
+- `playwright.config.ts`에 `admin-setup`/`admin-chromium` 프로젝트 추가. `testMatch` 정규식
+  anchor 실수를 한 번 함 — `admin-auth.setup.ts`도 문자열에 `auth.setup.ts`를 포함해서
+  `/^auth\.setup\.ts$/`로 앵커링하면 testDir 기준 상대경로("e2e/auth.setup.ts")와 안 맞아
+  **setup 프로젝트 자체가 0 tests**가 되는 사고 발생 → `/(^|\/)auth\.setup\.ts$/`로 수정해 해결
+  (`--list --project=setup`으로 즉시 확인 가능, 이후 비슷한 실수 방지용으로 기록).
+- **테스트 골프장 격리 설계를 한 번 갈아엎음**: 처음엔 global-setup이 관리자 시나리오 전체가
+  공유하는 골프장 하나(`TEST_COURSE_NAME`)를 만들게 했으나, admin-upload와 admin-loop-par가
+  같은 레코드의 루프를 서로 건드리면 실행 순서에 따라 결과가 달라지는 문제를 구현 중 자각 →
+  **시나리오마다 별도 이름의 전용 골프장을 그 스펙이 직접 만들도록** 재설계
+  (`fixtures/test-golf-course.ts`의 `CSV_UPLOAD_TEST_COURSE_NAME`/`PAR_EDITOR_TEST_COURSE_NAME`/
+  `SYNC_TEST_COURSE_NAME`/`GEOCODE_TEST_COURSE_NAME`, 전부 `E2E_TEST_` 접두사).
+  `global-setup`/`global-teardown`은 이제 골프장을 직접 만들지 않고, 이 접두사로 시작하는
+  골프장을 통째로 sweep(방어적 정리/최종 정리)만 한다 — `rounds-delete.spec.ts`가 이미 쓰던
+  "스펙이 자기 데이터를 직접 시딩" 컨벤션과 일관되게 맞춘 것.
+
+**시나리오별 구현**:
+- **5. 관리자: 루프·Par 관리** (`admin-loop-par.spec.ts`) — 루프 추가→Par 변경·저장→이름
+  변경→삭제 전체 CRUD. `GolfCourseParEditor.tsx`의 Par `<select>`에 `aria-label`이 없어
+  `getByLabel` 사용이 불가능했던 것을 발견해 추가(RoundStep1과 동일 유형의 접근성 개선).
+  루프 추가/이름변경/삭제가 `window.prompt`/`confirm` 네이티브 다이얼로그를 쓰길래
+  `rounds-delete.spec.ts`의 `page.once("dialog", ...)` 패턴을 그대로 재사용.
+- **6. 관리자: CSV 업로드** (`admin-upload.spec.ts`) — 유일하게 외부 API가 필요 없는 시나리오.
+  정상 행 2개 + 오류 유형 3가지(홀번호 범위/Par 값/골프장명 불일치)를 섞은 CSV를 buffer로
+  즉석 생성해 업로드, 화면 표시 + DB 반영 둘 다 확인.
+  ("골프장명이 이미 DB에 있어야 함" 제약 덕에 실제 652건을 전혀 안 건드리고도 검증 가능.)
+- **7. 관리자: 공공데이터 동기화** / **8. 관리자: 지오코딩 실행** — **핵심 기술적 난제**:
+  `golf-course-sync.ts`/`kakao.ts` 둘 다 **Next.js 서버(API route) 안에서 직접 fetch**하므로
+  Playwright의 `page.route()`(브라우저 레벨 가로채기)로는 절대 못 잡는다. 해결책: 두 파일의
+  하드코딩 API URL을 `env.ts`를 거쳐 env로 오버라이드 가능하게 고치고(평소엔 실제 URL,
+  e2e일 때만 값이 채워짐 — 운영 코드 경로 변화 없음), 순수 Node `http` 모듈로 만든 로컬 목
+  서버(`e2e/mocks/external-api-mock-server.mjs`, 새 의존성 없음)를 `playwright.config.ts`의
+  `webServer` **배열**(순서대로 기동 — 목 서버 먼저 `/health` 응답 확인 후 그 다음 Next dev
+  서버를 그 목 서버 주소 env와 함께 기동)로 등록.
+  - 7번: 정상 1건(TM좌표는 `geo.test.ts`에 이미 검증된 샘플 재사용) + 관리번호 누락으로
+    스킵되는 오류 1건을 고정 응답 → 토스트 문구("신규 1개 추가 · 0개 갱신 완료 (오류 1건)")와
+    DB 반영 둘 다 확인.
+  - 8번: **다른 시나리오와 설계가 다름** — `runGeocodingBatch()`는 `needsGeocoding=true`인
+    골프장 "전체"를 대상 필터링 없이 처리하므로, 실제 652건 중 미지오코딩분이 있으면 그것도
+    같이 배치에 걸린다. 목 서버는 테스트 전용 가짜 주소로 검색할 때만 좌표를 주고 그 외(실제
+    주소 포함)는 전부 "검색 결과 없음"으로 응답해 실제 데이터는 안전하게 보존(좌표 오염 없음,
+    처리 실패로만 끝남). 그래서 토스트 집계 숫자는 검증 대상에서 빼고, 우리 테스트 골프장
+    하나의 상태 변화(좌표 채워짐/needsGeocoding=false)만 DB로 직접 확인 — 실제 데이터 건수와
+    무관하게 항상 같은 결과를 내는 유일한 방법. 실행해보니 실제로 미지오코딩 실 데이터가 있어
+    배치가 1분 걸림(정상 — BATCH_LIMIT/재시도 지연 때문, 테스트도 그만큼 넉넉한 타임아웃 둠).
+
+**실행 중 발견한 문제 2가지(둘 다 앱 코드 버그 아님, 실행 환경/타이밍 이슈)**:
+1. **`webServer.reuseExistingServer: true`의 함정**: 재홍님이 별도로 `npm run dev`를 이미
+   켜둔 상태에서 `npm run test:e2e`를 돌리면, Playwright가 새 프로세스를 안 띄우고 그 기존
+   서버를 그대로 재사용 — 근데 그 서버는 새로 추가한 `PUBLIC_DATA_API_BASE_URL` 등 env 없이
+   떠 있는 상태라 진짜 공공데이터 API를 가짜 키로 호출하게 되고, 그 결과 시나리오 7의 토스트
+   문구가 기대값과 달라져("신규 0개..." vs 기대한 "신규 1개...") 실패로 보였음. **원인은
+   앱 코드가 아니라 "테스트 실행 전 기존 dev 서버를 반드시 종료해야 한다"는 실행 조건** —
+   재홍님이 dev 서버 종료 후 재실행해 바로 해결. 다음에도 이 패턴(env를 새로 추가한 직후 실행
+   결과가 이상하면 우선 기존 서버 프로세스부터 의심)을 기억해둘 것.
+2. **admin-loop-par 삭제 단계 flaky**: 5초 → 15초로 타임아웃을 늘렸는데도 한 번 더 실패해서
+   성공 토스트/에러 메시지를 분기해서 잡는 진단 코드를 추가했으나, 그다음 재실행에서는
+   코드를 안 고쳤는데도 그냥 통과함 — 순수 네트워크/타이밍 flaky로 결론(바로 앞 지오코딩
+   테스트가 1분간 Supabase를 많이 두드린 여파일 가능성). 진단 코드(성공/실패 토스트 분기)는
+   앞으로 비슷한 flaky 재발 시 원인을 바로 알 수 있게 그대로 남겨둠.
+
+**최종 결과**: `npm run test:e2e` 11개 테스트(setup 2개 + 시나리오 1~4/chromium 5개 +
+시나리오 5~8/admin-chromium 4개) **전부 통과**. `doc/scripts/generate_test_plan.js`의
+Playwright 결과 표 8개 시나리오 전부 "통과"로 갱신, 03/04절(진행 방식/우선 시나리오/로드맵)
+텍스트도 실제 완료된 내용(OAuth 우회 불필요, 목 서버로 외부 API 대체, 접두사 기반 데이터
+격리)으로 갱신 후 `doc/ScoreCaddie_테스트계획서.pptx` 재생성 — `validate.py` PASS + 4개
+슬라이드 렌더링 육안 검수(오버플로우 없음) 완료.
+
+### 다음 세션 시작 시
+
+- Playwright e2e 8개 시나리오(핵심 플로우 4 + 관리자 4) 전부 완료 — **coding-guidelines.md
+  적용 6단계(Vitest+Playwright 셋업/테스트 작성) 전체가 이걸로 종료**. 앞으로 새 기능을 추가할
+  때마다 관련 시나리오를 `e2e/`에 이어서 추가하고, 회귀 확인은 `npm run test:e2e`로 하면 됨
+  (실행 전 기존 `npm run dev`가 떠 있으면 반드시 먼저 종료할 것 — 위 1번 교훈).
+  로컬 목 서버 패턴(`e2e/mocks/external-api-mock-server.mjs` + env 오버라이드)은 앞으로
+  서버사이드에서 외부 API를 호출하는 새 기능을 테스트할 때도 그대로 재사용 가능.
+- 특별히 남은 후속 과제는 없음 — 다음 세션은 재홍님이 새로 지시하는 기능 개발/버그 수정으로
+  넘어가면 됨.

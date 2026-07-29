@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { convertTmToWgs84 } from "@/lib/utils/geo";
+import { env } from "@/lib/config/env";
 
 // 골프장 공공 데이터 동기화 로직 본체 — API 페이지네이션 호출 + upsert 처리를 담당.
 // (route.ts에서 분리, coding-guidelines.md §4-2 "API route는 얇게" 적용, 2026-07-28)
@@ -19,7 +20,10 @@ import { convertTmToWgs84 } from "@/lib/utils/geo";
 // 시점에 바로 처리한다. rawCoordX/Y가 없거나 변환 결과가 대한민국 범위를 벗어나면
 // latitude/longitude를 null로 두고 needsGeocoding=true로 표시(주소 기반 지오코딩은 후속 과제).
 
-const API_BASE_URL = "https://apis.data.go.kr/1741000/golf_courses/info";
+// 평소엔 실제 공공데이터포털 API를 호출하고, e2e 테스트 때만 env로 로컬 목 서버 주소로
+// 바꿔치기된다(env.ts 주석 참고) — 운영 코드 경로는 변화 없음.
+const API_BASE_URL =
+  env.publicDataApiBaseUrl || "https://apis.data.go.kr/1741000/golf_courses/info";
 const PAGE_SIZE = 100;
 const MAX_PAGES = 200; // 안전장치: totalCount 이상치로 인한 무한/과도 호출 방지 (최대 20,000건)
 const FETCH_TIMEOUT_MS = 10_000;

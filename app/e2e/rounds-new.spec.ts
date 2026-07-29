@@ -39,12 +39,15 @@ test.describe("라운드 등록 2-Step", () => {
     await page.getByRole("button", { name: /스코어 카드/ }).click();
 
     // ── Step2: 스코어 입력 ──────────────────────────────────────────────
-    await expect(page).toHaveURL(/\/rounds\/new\?.*step=2/);
+    await expect(page).toHaveURL(/\/rounds\/new\?.*step=2/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "스코어 입력" })).toBeVisible();
 
     // 첫 홀 저장 시점에 서버에서 Round가 실제로 생성된다(POST /api/rounds — 지연 생성).
+    // 이 클릭은 POST /api/rounds + PUT .../holes/1 두 번의 실제 Supabase 왕복을 거친 뒤에야
+    // router.replace로 URL이 바뀌므로, 기본 5s 타임아웃은 네트워크가 느릴 때 flaky할 수 있어
+    // 넉넉히 늘려둔다(1차 접속 시 Next dev의 API route 최초 컴파일 지연도 겹칠 수 있음).
     await page.getByRole("button", { name: /전반 1번홀 입력/ }).click();
-    await expect(page).toHaveURL(/\/rounds\/new\?step=2&edit=/);
+    await expect(page).toHaveURL(/\/rounds\/new\?step=2&edit=/, { timeout: 15_000 });
 
     // 두 번째 홀까지 저장해 스코어카드 흐름이 이어지는 것을 확인.
     await expect(page.getByRole("button", { name: /전반 2번홀 입력/ })).toBeVisible();

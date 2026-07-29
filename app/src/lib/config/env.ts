@@ -13,4 +13,11 @@ export const env = {
   kakaoRestApiKey: process.env.KAKAO_REST_API_KEY,
   weatherApiKey: process.env.WEATHER_API_KEY,
   publicDataApiKey: process.env.PUBLIC_DATA_API_KEY,
+  // 아래 값들은 평소엔 비어있고, e2e 테스트(playwright.config.ts webServer.env)에서만
+  // 로컬 목 서버 주소로 채워진다 — golf-course-sync.ts/kakao.ts가 실제 외부 API 대신
+  // e2e/mocks/external-api-mock-server.mjs를 바라보게 하기 위함(둘 다 서버 사이드 fetch라
+  // Playwright의 page.route()로는 가로챌 수 없어서 이 방식을 씀).
+  publicDataApiBaseUrl: process.env.PUBLIC_DATA_API_BASE_URL,
+  kakaoAddressApiBaseUrl: process.env.KAKAO_ADDRESS_API_BASE_URL,
+  kakaoKeywordApiBaseUrl: process.env.KAKAO_KEYWORD_API_BASE_URL,
 } as const;

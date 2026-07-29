@@ -35,8 +35,12 @@
 // 응답에서 x=경도(longitude), y=위도(latitude) — 카카오 특유의 순서라 헷갈리기 쉬우니 주의.
 import { env } from "@/lib/config/env";
 
-const ADDRESS_API_URL = "https://dapi.kakao.com/v2/local/search/address.json";
-const KEYWORD_API_URL = "https://dapi.kakao.com/v2/local/search/keyword.json";
+// 평소엔 실제 카카오 로컬 API를 호출하고, e2e 테스트 때만 env로 로컬 목 서버 주소로
+// 바꿔치기된다(env.ts 주석 참고) — 운영 코드 경로는 변화 없음.
+const ADDRESS_API_URL =
+  env.kakaoAddressApiBaseUrl || "https://dapi.kakao.com/v2/local/search/address.json";
+const KEYWORD_API_URL =
+  env.kakaoKeywordApiBaseUrl || "https://dapi.kakao.com/v2/local/search/keyword.json";
 const FETCH_TIMEOUT_MS = 8_000;
 const BETWEEN_ATTEMPT_DELAY_MS = 120; // 같은 골프장에 대해 API를 연달아 호출하므로 QPS 여유를 위해 대기
 

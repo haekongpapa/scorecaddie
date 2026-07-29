@@ -268,9 +268,9 @@ function sectionTitle(slide, title, sub) {
 
   const rows = [
     ["위치", "e2e/ 폴더에 시나리오별 *.spec.ts 로 모음"],
-    ["실행 환경 요구사항", "Supabase DB 연결 완료(2026-07-28) — 이제 착수 가능"],
-    ["로그인 우회", "Google/Kakao 실제 OAuth 화면은 자동화 어려움 → 테스트 전용 로그인 경로 또는 세션 쿠키 주입 방식 검토"],
-    ["데이터 격리", "운영 DB 오염 방지를 위해 테스트 전용 Supabase 프로젝트/스키마 분리 권장"],
+    ["실행 환경 요구사항", "Supabase DB 연결 완료 + 8개 시나리오 전부 재홍님 로컬에서 실행 검증 완료(2026-07-29)"],
+    ["로그인 우회", "앱이 이미 id/pw(Credentials) 로그인을 지원해 별도 우회 불필요 — 테스트 전용 계정으로 실제 로그인 폼을 그대로 통과(OAuth는 안 씀)"],
+    ["데이터 격리", "별도 Supabase 프로젝트 분리 대신, 이름 접두사(E2E_TEST_)/전용 계정으로 같은 DB 안에서 격리 — global-setup/teardown이 생성·삭제, 실 데이터(652건)는 전혀 건드리지 않음"],
   ];
 
   let y = 2.0;
@@ -303,14 +303,14 @@ function sectionTitle(slide, title, sub) {
   sectionTitle(s, "Playwright — 우선 시나리오", "핵심 사용자 플로우 기준 — 화면 번호는 기획 문서 기준");
 
   const scenarios = [
-    ["로그인", "테스트 전용 로그인 경로 필요"],
+    ["로그인", "id/pw 테스트 계정으로 실제 로그인 폼 통과"],
     ["골프장 목록 조회", "검색/필터 동작 확인"],
     ["라운드 등록 2-Step (7-1→7-2)", "가장 핵심 사용자 플로우"],
     ["라운드 상세 · 삭제 (9번)", "본인 소유 검증 포함"],
-    ["관리자: 루프·Par 관리 (12번)", "CRUD 전반"],
-    ["관리자: CSV 업로드 (13번)", "부분 성공 처리 확인"],
-    ["관리자: 공공데이터 동기화 (11번)", "외부 API 응답은 별도 목 서버 권장"],
-    ["관리자: 지오코딩 실행 (11번)", "카카오 API도 목 처리 권장"],
+    ["관리자: 루프·Par 관리 (12번)", "ADMIN 전용 계정 + 전용 테스트 골프장으로 CRUD 전반"],
+    ["관리자: CSV 업로드 (13번)", "부분 성공 처리 확인(외부 API 불필요)"],
+    ["관리자: 공공데이터 동기화 (11번)", "로컬 목 서버로 외부 API 대체"],
+    ["관리자: 지오코딩 실행 (11번)", "로컬 목 서버로 카카오 API 대체, 실 데이터 안전 격리"],
   ];
 
   const colW = 5.85;
@@ -346,7 +346,7 @@ function sectionTitle(slide, title, sub) {
     x: 0.6, y: 0.5, w: 10, h: 0.7,
     fontFace: FONT_HEAD, fontSize: 30, bold: true, color: WHITE, margin: 0,
   });
-  s.addText("Vitest는 지금, Playwright는 Supabase 연결 이후", {
+  s.addText("Vitest, Supabase 연결, Playwright 8개 시나리오까지 전부 완료", {
     x: 0.6, y: 1.15, w: 10, h: 0.4,
     fontFace: FONT_BODY, fontSize: 13, color: "9FC8C9", margin: 0,
   });
@@ -354,8 +354,8 @@ function sectionTitle(slide, title, sub) {
   const steps = [
     ["1", "Vitest 셋업 + 우선 함수 테스트 작성 — 완료", "38개 테스트(7개 파일) 전부 통과, 2026-07-28", ACCENT],
     ["2", "Supabase DB 연결 — 완료", "프로젝트 생성 + 마이그레이션 8건 + 로컬 데이터 이전까지 완료, 2026-07-28", SECONDARY],
-    ["3", "Playwright 셋업 + 테스트 전용 로그인 경로 마련", "이제 착수 가능 — OAuth 우회 방식 확정 필요", PRIMARY],
-    ["4", "핵심 사용자 플로우 e2e 작성 · 실행", "라운드 등록 2-Step부터 우선 작성", "0B5C63"],
+    ["3", "Playwright 셋업 — 완료", "id/pw 테스트 계정 + storageState 재사용 구조, OAuth 우회 불필요로 판명", PRIMARY],
+    ["4", "8개 시나리오 e2e 작성 · 실행 — 완료", "1~4번(핵심 플로우) + 5~8번(관리자, 목 서버로 외부 API 대체) 전부 통과, 2026-07-29", "0B5C63"],
   ];
 
   let y = 2.05;
@@ -468,16 +468,18 @@ resultTableSlide(
 // 2026-07-28: 총 38개 테스트(7개 파일) 전부 통과 — 로컬 npm run test로 재확인 완료.
 
 // ── 11. 결과 관리 — Playwright ─────────────────────────────────────────
-// 2026-07-29: 1~4번 시나리오는 id/pw 테스트 전용 계정(e2e/fixtures/test-account.ts) +
-// global-setup/teardown 기반으로 구현 완료. Cowork 샌드박스는 Supabase DB 호스트/Playwright
-// Chromium 다운로드 CDN이 네트워크 allowlist에 막혀 있어 그 자리에서는 실행 검증을 못 했으나,
-// 재홍님 로컬 PC에서 `npm run test:e2e` 실행 후 6개 테스트(setup 1개 + 시나리오 5개) 전부
-// 통과 확인. 다만 1차 실행에서 셀렉터 버그 2건 발견되어 수정 후 재확인함:
-// (1) RoundStep1.tsx의 "골프장" <select>가 <label>과 htmlFor/id로 연결 안 돼 있어
-//     getByLabel("골프장")이 못 찾고 타임아웃 — id="round-course" 연결로 수정.
-// (2) rounds-new.spec.ts에서 /rounds 목록 확인 시 getByText(course.name)이 필터용
-//     <select><option>(hidden)까지 같이 매칭돼 strict violation/hidden 실패 —
-//     실제 라운드 카드 링크(RoundListItem, <Link>)로 좁혀서(getByRole("link", ...)) 수정.
+// 2026-07-29: 8개 시나리오 전부 구현 + 재홍님 로컬 npm run test:e2e로 실제 통과 확인 완료
+// (Cowork 샌드박스는 Supabase DB/Playwright Chromium CDN이 네트워크 allowlist에 막혀 실행
+// 자체는 항상 로컬에서 검증 — memory.md 114/116/117번 참고).
+// - 1~4번(로그인/골프장 목록/라운드 등록/라운드 상세삭제): 셀렉터 버그 2건 발견 후 수정
+//   (RoundStep1.tsx label-select 연결 누락, rounds-new.spec.ts의 hidden 필터 옵션 충돌).
+// - 5~8번(관리자 4종): ADMIN 전용 테스트 계정 + 시나리오별 전용 테스트 골프장(E2E_TEST_ 접두사)
+//   으로 실 데이터와 완전히 격리. 7·8번(공공데이터 동기화/지오코딩)은 golf-course-sync.ts/
+//   kakao.ts가 서버 사이드에서 직접 외부 API를 fetch해 page.route()로 못 가로채므로,
+//   두 파일의 API_BASE_URL을 env로 오버라이드 가능하게 고치고 로컬 목 서버
+//   (e2e/mocks/external-api-mock-server.mjs)를 playwright.config.ts가 Next dev 서버보다
+//   먼저 띄워 바라보게 함. 5번(루프·Par 관리)은 GolfCourseParEditor.tsx의 Par select에
+//   label 연결이 없던 것도 같이 고침(RoundStep1과 동일 유형).
 resultTableSlide(
   "테스트 결과 — Playwright",
   "E2E 시나리오 실행 결과를 여기에 누적 기록합니다",
@@ -487,10 +489,10 @@ resultTableSlide(
     ["골프장 목록 조회", "e2e/courses.spec.ts", "통과", "2026-07-29", "재홍님 로컬 npm run test:e2e로 확인"],
     ["라운드 등록 2-Step", "e2e/rounds-new.spec.ts", "통과", "2026-07-29", "셀렉터 버그 2건 수정 후 통과(비고 참고)"],
     ["라운드 상세·삭제", "e2e/rounds-delete.spec.ts", "통과", "2026-07-29", "재홍님 로컬 npm run test:e2e로 확인"],
-    ["관리자: 루프·Par 관리", "e2e/admin-loop-par.spec.ts", "예정", "-", "관리자 role 세팅 필요"],
-    ["관리자: CSV 업로드", "e2e/admin-upload.spec.ts", "예정", "-", "관리자 role 세팅 필요"],
-    ["관리자: 공공데이터 동기화", "e2e/admin-sync.spec.ts", "예정", "-", "외부 API 목 서버 권장"],
-    ["관리자: 지오코딩 실행", "e2e/admin-geocode.spec.ts", "예정", "-", "카카오 API 목 처리 권장"],
+    ["관리자: 루프·Par 관리", "e2e/admin-loop-par.spec.ts", "통과", "2026-07-29", "ADMIN 계정+전용 테스트 골프장, label 누락 수정"],
+    ["관리자: CSV 업로드", "e2e/admin-upload.spec.ts", "통과", "2026-07-29", "외부 API 없음 — 즉석 CSV로 부분성공 검증"],
+    ["관리자: 공공데이터 동기화", "e2e/admin-sync.spec.ts", "통과", "2026-07-29", "로컬 목 서버로 공공데이터 API 대체"],
+    ["관리자: 지오코딩 실행", "e2e/admin-geocode.spec.ts", "통과", "2026-07-29", "로컬 목 서버로 카카오 API 대체, 실 데이터 안전 격리"],
   ]
 );
 
