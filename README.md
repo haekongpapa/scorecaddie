@@ -3,7 +3,7 @@
 개인(또는 소규모 그룹)의 골프 라운드 스코어를 골프장·일자·홀 단위로 기록하고 조회하는 웹 서비스입니다. Next.js + Prisma + PostgreSQL(Supabase) 기반으로 개발했고, 현재 [Vercel](https://scorecaddie.vercel.app/)에 배포되어 실사용 가능한 상태입니다.
 
 - **배포 주소**: https://scorecaddie.vercel.app/
-- **저장소**: https://github.com/haekongpapa/scorecaddie
+- **저장소**: https://git.northstar.co.kr/wi97/vibe-coding.git
 - **기술 스택**: Next.js 15(App Router) + TypeScript + Tailwind CSS + Prisma ORM 7 + PostgreSQL(Supabase) + NextAuth.js v5, 배포는 Vercel
 - **진행 상태**: 기획 → 설계 → 구현 → 테스트 → 배포 1주기 완료(MVP). 화면 14개(사용자 10 + 관리자 4) 전부 실구현, Playwright e2e 8개 시나리오 전체 통과.
 
@@ -17,8 +17,8 @@
 
 **산출물**
 
-| 파일 | 설명 |
-|---|---|
+| 파일                                 | 설명                                                               |
+| ------------------------------------ | ------------------------------------------------------------------ |
 | `doc/ScoreCaddie_분석설계_요약.pptx` | 프로젝트 개요·핵심기능·기술스택을 포함한 전체 요약(1~5번 슬라이드) |
 
 ## 2. 분석 / 설계
@@ -27,11 +27,11 @@
 
 **산출물**
 
-| 파일 | 설명 |
-|---|---|
+| 파일                                 | 설명                                                                       |
+| ------------------------------------ | -------------------------------------------------------------------------- |
 | `doc/ScoreCaddie_분석설계_요약.pptx` | DB 스키마·컬럼 정의·화면 설계 상세(6~10번 슬라이드), v5(2026-07-29 최신화) |
-| `doc/pages.md` | 화면 14개 상세 설계 문서(경로/레이아웃/컴포넌트/데이터 의존성) |
-| `doc/mockups/*.html` | 화면별 HTML 목업 19개 |
+| `doc/pages.md`                       | 화면 14개 상세 설계 문서(경로/레이아웃/컴포넌트/데이터 의존성)             |
+| `doc/mockups/*.html`                 | 화면별 HTML 목업 19개                                                      |
 
 ## 3. 구현
 
@@ -39,15 +39,15 @@
 
 **산출물**
 
-| 파일 | 설명 |
-|---|---|
+| 파일                                 | 설명                                                                   |
+| ------------------------------------ | ---------------------------------------------------------------------- |
 | `doc/ScoreCaddie_분석설계_요약.pptx` | 관리자 화면 4종·공공데이터 연동/지오코딩·테스트 현황(11~16번 슬라이드) |
-| `doc/coding-guidelines.md` | 디렉터리 구조·TypeScript 규칙·코딩 스타일 가이드 |
-| `doc/admin-golfcourse-sync.md` | 골프장 공공데이터 동기화 설계(API 스펙, 페이지네이션, 증분 조회 조건) |
-| `doc/admin-csv-upload.md` | 관리자 CSV 일괄 업로드 처리 로직 설계 |
-| `doc/ScoreCaddie_테스트계획서.pptx` | Vitest/Playwright 테스트 계획 및 시나리오 8개 결과 |
-| `doc/ScoreCaddie_지침관리방안.pptx` | 코딩 가이드 문서 운영 방침(자동로드 vs 별도문서 검토) |
-| `doc/개발리스트.md` | 화면·기능 단위 구현 상태 체크리스트 |
+| `doc/coding-guidelines.md`           | 디렉터리 구조·TypeScript 규칙·코딩 스타일 가이드                       |
+| `doc/admin-golfcourse-sync.md`       | 골프장 공공데이터 동기화 설계(API 스펙, 페이지네이션, 증분 조회 조건)  |
+| `doc/admin-csv-upload.md`            | 관리자 CSV 일괄 업로드 처리 로직 설계                                  |
+| `doc/ScoreCaddie_테스트계획서.pptx`  | Vitest/Playwright 테스트 계획 및 시나리오 8개 결과                     |
+| `doc/ScoreCaddie_지침관리방안.pptx`  | 코딩 가이드 문서 운영 방침(자동로드 vs 별도문서 검토)                  |
+| `doc/개발리스트.md`                  | 화면·기능 단위 구현 상태 체크리스트                                    |
 
 ## 4. 배포
 
@@ -55,12 +55,12 @@
 
 **산출물**
 
-| 파일 | 설명 |
-|---|---|
+| 파일                                    | 설명                                                          |
+| --------------------------------------- | ------------------------------------------------------------- |
 | `doc/ScoreCaddie_배포방안_검토_v2.pptx` | 배포 플랫폼 비교 검토 및 PM 추천안(Vercel+Supabase 결정 근거) |
-| `doc/supabase-deploy-guide.md` | Supabase 프로젝트 생성·연결 문자열 설정 가이드 |
-| `doc/vercel-deploy-guide.md` | Vercel 프로젝트 생성·환경변수·배포 완료 체크리스트 |
-| `doc/ScoreCaddie_분석설계_요약.pptx` | 테스트&배포 현황(13번 슬라이드) |
+| `doc/supabase-deploy-guide.md`          | Supabase 프로젝트 생성·연결 문자열 설정 가이드                |
+| `doc/vercel-deploy-guide.md`            | Vercel 프로젝트 생성·환경변수·배포 완료 체크리스트            |
+| `doc/ScoreCaddie_분석설계_요약.pptx`    | 테스트&배포 현황(13번 슬라이드)                               |
 
 ---
 
