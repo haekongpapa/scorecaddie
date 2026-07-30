@@ -102,17 +102,25 @@ function TrendPanel({ data }: { data: AnalysisResult }) {
       <h2 className="mb-2.5 text-[13px] font-semibold text-muted">
         최근 {recent.length}라운드 추이
       </h2>
-      <div className="mb-1 flex h-32 items-end gap-1.5 px-0.5">
+      <div className="mb-1 flex h-32 gap-1.5 px-0.5">
         {recent.map((p) => {
           // 25~90% 범위로 정규화 — 실제 값 차이가 작아도 막대 높이 차이가 눈에 보이게.
           const heightPct = 25 + ((p.strokes - min) / range) * 65;
           return (
-            <div key={p.roundId} className="flex flex-1 flex-col items-center justify-end">
+            // 부모(h-32)에 items-end를 주면 각 열이 내용 높이만큼만 차지해 stretch가 안 되고,
+            // 그 상태에서 막대에 height:%를 줘도 기준이 될 "정해진 높이"가 없어 0으로
+            // 접혀버린다(막대가 안 보이던 원인, 2026-07-30 발견). 부모는 기본 stretch로 두고
+            // 각 열이 h-32를 그대로 채우게 한 다음, 라벨 두 줄을 뺀 나머지 공간을 flex-1
+            // "트랙"으로 따로 잡아 그 트랙 안에서만 height:%가 정해진 높이를 기준으로
+            // 계산되게 한다.
+            <div key={p.roundId} className="flex flex-1 flex-col items-center">
               <span className="mb-0.5 text-[9px] text-muted">{p.strokes}</span>
-              <div
-                className={`w-full max-w-[20px] rounded-t ${p.isBest ? "bg-accent" : "bg-primary"}`}
-                style={{ height: `${heightPct}%` }}
-              />
+              <div className="flex w-full flex-1 items-end justify-center">
+                <div
+                  className={`w-full max-w-[20px] rounded-t ${p.isBest ? "bg-accent" : "bg-primary"}`}
+                  style={{ height: `${heightPct}%` }}
+                />
+              </div>
               <span className="mt-1 whitespace-nowrap text-[8.5px] text-muted">
                 {p.dateLabel.slice(5)}
               </span>
