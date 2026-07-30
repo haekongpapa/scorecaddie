@@ -3,7 +3,7 @@
 개인(또는 소규모 그룹)의 골프 라운드 스코어를 골프장·일자·홀 단위로 기록하고 조회하는 웹 서비스입니다. Next.js + Prisma + PostgreSQL(Supabase) 기반으로 개발했고, 현재 [Vercel](https://scorecaddie.vercel.app/)에 배포되어 실사용 가능한 상태입니다.
 
 - **배포 주소**: https://scorecaddie.vercel.app/
-- **저장소**: https://git.northstar.co.kr/wi97/vibe-coding.git
+- **저장소**: https://github.com/haekongpapa/scorecaddie
 - **기술 스택**: Next.js 15(App Router) + TypeScript + Tailwind CSS + Prisma ORM 7 + PostgreSQL(Supabase) + NextAuth.js v5, 배포는 Vercel
 - **진행 상태**: 기획 → 설계 → 구현 → 테스트 → 배포 1주기 완료(MVP). 화면 14개(사용자 10 + 관리자 4) 전부 실구현, Playwright e2e 8개 시나리오 전체 통과.
 
