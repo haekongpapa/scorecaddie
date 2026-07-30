@@ -2628,3 +2628,38 @@ AskUserQuestion으로 범위 확정:
   갱신) 항목 완료로 갱신.
 - 날씨 예보(+6일, 06-2번) 기능은 여전히 보류 상태 — 재홍님이 다시 요청하면
   `doc/기능기획_날씨예보및기록분석.md` 1장(중기예보 API, regId 매핑 등) 그대로 재개.
+
+
+## 127. next/@next-swc 버전 불일치 진단 + npm test 실행 중 발견된 테스트 버그 수정 (2026-07-30)
+
+126번 이후 재홍님이 로컬에서 `npm run dev` 실행 시 "Mismatching @next/swc version, detected:
+15.1.6 while Next.js is on 15.1.9" 경고 보고.
+
+- **원인 진단**: 샌드박스에서 `node_modules/@next/swc-*` 버전을 직접 확인해보니
+  `swc-win32-x64-msvc`(재홍님 Windows에서 실제 로드하는 바이너리)만 **15.1.6**에 멈춰
+  있었음(참고로 `swc-linux-x64-gnu`/`swc-linux-musl`은 15.1.9, `next` 코어는 15.1.12로
+  셋 다 제각각). 근본 원인은 118번(2026-07-29)에서 `npm install --package-lock-only`로만
+  15.1.12 업그레이드를 처리했던 것 — 이 명령은 `package.json`/`package-lock.json`만
+  갱신하고 `node_modules` 실제 파일은 건드리지 않는다는 걸 이번에 재확인함. 즉 그때부터
+  로컬 `node_modules`는 버전 표기와 실제 바이너리가 계속 어긋나 있었고, 126번에서 내가
+  `node_modules/next` 코어만 수동 복구하며 그 불일치가 겉으로 드러난 것.
+- **해결**: 재홍님이 로컬에서 평범한 `npm install` 1회 실행 → `package-lock.json`이 갱신되며
+  해결 확인(이 세션에서 `git status`로 lockfile diff 확인 — `fsevents`의 `dev:true` 플래그
+  제거 등 정상적인 재정렬 수준, 문제 없음).
+- **`npm test`(vitest)는 dev 서버와 무관하게 실행 가능**하다고 안내(서버 종료가 필요한 건
+  `npm run test:e2e`뿐 — 116번 항목의 mock 서버 env 문제 때문).
+- **재홍님이 `npm test` 실행 → `compute-analysis.test.ts`에서 실제 버그 1건 발견**: "④ 날씨:
+  기온 구간별 평균타수" 테스트가 실패. 원인은 **테스트 기대값 쪽의 손계산 실수**(구현
+  코드는 정상) — `temperatureBucketLabel()`이 "미만" 기준 경계라 정확히 25도는
+  `20~25°C`가 아니라 `25~30°C` 구간에 들어가는데, 최초 작성 시 25도를 `20~25°C`에 잘못
+  넣었음. 테스트 기대값을 실제 vitest 실행 결과에 맞게 수정(구현 로직 변경 없음).
+  이번 항목으로 **126번에서 유닛테스트를 샌드박스에서 못 돌려보고 손계산만으로 커밋한
+  리스크가 실제로 현실화된 사례** — 다음부터 로직이 복잡한 유닛테스트는 재홍님 로컬
+  `npm test` 실행 결과를 받기 전까지는 "검증 완료"로 간주하지 않을 것.
+- `package-lock.json`(재홍님 `npm install` 결과) + 테스트 수정 함께 커밋(`a1f9642`).
+
+### 다음 세션 시작 시
+
+- `npm test`/`npm run test:e2e` 나머지 결과(전체 통과 여부) 공유받으면 `doc/개발리스트.md`
+  15번 섹션의 🟡 항목 완료로 갱신.
+- next/@next-swc 버전 불일치는 해결 완료로 종료.
