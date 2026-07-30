@@ -35,7 +35,7 @@ test.describe("관리자: 지오코딩 실행", () => {
     await prisma.$disconnect();
 
     await page.goto("/admin/golf-courses");
-    await expect(page.getByRole("heading", { name: "골프장 Par 관리" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "골프장 관리" })).toBeVisible();
     // pendingCount === 0이면 카드 자체가 안 뜨는데(GeocodeBatchCard.tsx), 방금 만든 우리
     // 골프장이 항상 하나는 잡혀있어 이 시점엔 반드시 렌더링된다.
     await expect(page.getByRole("button", { name: "실행" })).toBeVisible();

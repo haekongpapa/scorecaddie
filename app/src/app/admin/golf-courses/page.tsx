@@ -75,7 +75,7 @@ export default async function AdminGolfCoursesPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-md p-5 pb-24">
-      <TopBar title="골프장 Par 관리" backHref="/dashboard" />
+      <TopBar title="골프장 관리" backHref="/dashboard" />
 
       <span className="mb-3 inline-block rounded-md bg-accent px-2 py-1 text-[11px] font-semibold text-white">
         관리자 전용

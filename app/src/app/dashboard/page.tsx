@@ -62,7 +62,7 @@ export default async function DashboardPage() {
           >
             <div>
               <div className="text-[13.5px] font-semibold">
-                ⚙️ 관리자 - 골프장 Par 관리
+                ⚙️ 관리자 - 골프장 관리
               </div>
               <div className="mt-0.5 text-xs text-muted">
                 골프장 Par 등록/CSV 업로드로 이동

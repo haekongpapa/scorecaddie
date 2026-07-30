@@ -25,7 +25,7 @@ test.describe("관리자: 공공데이터 동기화", () => {
     await prisma.$disconnect();
 
     await page.goto("/admin/golf-courses");
-    await expect(page.getByRole("heading", { name: "골프장 Par 관리" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "골프장 관리" })).toBeVisible();
 
     await page.getByRole("button", { name: "업로드" }).click();
     await expect(
