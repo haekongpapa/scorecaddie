@@ -2536,3 +2536,95 @@ AskUserQuestion으로 범위 확정:
   바꿔도 무방) → Playwright e2e 추가 → 문서/`memory.md` 갱신 → 커밋.
 - 중기예보 API는 실제 활용신청 전이라 스펙 세부사항(정확한 오퍼레이션명/regId 목록/키
   발급 필요 여부)은 구현 착수 시점에 재검증 필요.
+
+
+## 126. 15번(기록 분석) 화면 실구현 — 날씨 예보는 보류, 분석만 진행 (2026-07-30)
+
+125번 기획서 제시 후 재홍님이 "날씨 예보는 일단 보류하고 골프 기록 분석만 진행"으로 범위를
+좁히고, 이어서 열린 질문 2건을 AskUserQuestion으로 확정: **진입점 = 대시보드 5번째 메뉴
+카드**, **표본부족 기준 = 3회 미만 "참고용" 표시**. 이후 "골프장 탭과 홀 상세 순서를 바꿔
+줘, 계속 진행해"로 목업 탭 순서(추이/홀상세/골프장/날씨) 확정 + 바로 실구현 진행 지시.
+
+**구현 범위**: 15번(기록 분석) 화면 전체 신규 구현. 날씨 예보(+6일, 06-2)는 이번 세션에서
+손대지 않음 — `doc/mockups/index.html`에 "보류 중인 제안"으로 남겨둠.
+
+**신규 파일**:
+- `lib/weather/parse-snapshot.ts` — `Round.weatherSnapshot`이 (schema.prisma 주석과 달리)
+  실제로는 `kma.ts`의 `getWeatherSnapshot()`이 만든 평문 라벨("☀️ 맑음 27°C")임을
+  `api/rounds/route.ts` 확인으로 재검증하고, 이를 하늘상태/기온으로 되파싱하는 유틸.
+- `lib/analysis/compute-analysis.ts` — 4탭(추이/홀상세/골프장/날씨) 집계 전부를 담당하는
+  순수 함수(`computeAnalysis`). DB 접근 없이 라운드 배열만 받아 계산하도록 분리해 유닛
+  테스트 가능하게 함(coding-guidelines.md §2 "route/page는 얇게" 원칙 그대로 적용).
+  GIR은 `onGreenStrokes ≤ par-2` 근사, 페어웨이 안착률/티샷분포는 `teeShotResult` 기준,
+  라운드당 평균 퍼트는 "라운드별 합의 평균"으로 계산(홀별 평균×홀수 방식보다 정확).
+  `MIN_RELIABLE_SAMPLE = 3` 상수로 표본기준 노출.
+- `app/analysis/page.tsx` — 서버 컴포넌트, `Round.findMany`(전체, `playedAt asc`) →
+  `computeAnalysis()` → `AnalysisTabs`에 전달.
+- `components/AnalysisTabs.tsx` — 클라이언트, 세그먼트 탭 4개 + 패널. 서버에서 계산된
+  퍼센트 값으로 막대 너비를 그려야 해서 **이 화면에 한해 예외적으로 inline `style`
+  사용**(Tailwind는 동적 템플릿 클래스는 빌드 시 CSS를 못 만듦) — `doc/coding-guidelines.md`
+  §4.5에 예외 규칙으로 새로 반영.
+- `e2e/analysis.spec.ts` — 대시보드 진입 + 탭 전환. 테스트 계정 라운드 건수에 의존하지
+  않도록 빈 상태/실데이터 양쪽 다 통과하는 유연한 검증(courses.spec.ts 패턴 재사용).
+- `compute-analysis.test.ts`/`parse-snapshot.test.ts` — 손으로 직접 계산한 5라운드 픽스처
+  값과 대조하는 유닛 테스트(추이/골프장/홀상세/날씨 전 지표 커버).
+
+**기존 파일 수정**: `app/dashboard/page.tsx`(`MENU_CARDS`에 "기록 분석" 추가, 그리드
+`grid-cols-4`→`grid-cols-3`로 5개 카드 3+2 배치), `doc/pages.md`(15번 섹션 신규 + 4번
+대시보드 설명 갱신, 총 화면 수 14→15), `doc/개발리스트.md`(15번 섹션 신규),
+`doc/mockups/15-analysis.html`(탭 순서 골프장↔홀상세 교체), `doc/mockups/index.html`(15번을
+정식 갤러리로 승격, 06-2는 "보류"로 유지), `doc/coding-guidelines.md`(§4.5 inline style
+예외 규칙 신규).
+
+**환경 이슈 및 복구 (중요 — 다음 세션 참고)**:
+- 유닛 테스트를 샌드박스에서 직접 돌려 검증하려고 `npx vitest run`을 실행했더니
+  `Cannot find native binding` 에러(rolldown 관련 optional dependency 누락, npm/cli#4828
+  유형) 발생. `npm install --no-save @rolldown/binding-linux-x64-gnu`로 바인딩 자체는
+  설치됐으나, 이후 vitest 실행이 **"Bus error (core dumped)"로 하드 크래시** — 이 세션의
+  샌드박스 환경에서는 vitest를 실행할 수 없는 것으로 결론(단순 타임아웃이 아니라 네이티브
+  바인딩이 이 샌드박스 아키텍처와 근본적으로 안 맞는 것으로 추정). **다음 세션에서도 굳이
+  vitest를 sandbox에서 돌리려 시도하지 말 것** — 대신 `npx tsc --noEmit`(타입 검증) +
+  로직을 손으로 계산해 유닛 테스트 fixture 기대값을 미리 검증하는 방식으로 대체.
+- 더 심각했던 문제: 위 `npm install <특정 패키지>` 실행이 **`next` 패키지 자체를 깨뜨림**
+  (`node_modules/next`에 `package.json`이 사라지고 `npm ls`가 `invalid: next@`로 표시,
+  전체 `tsc`가 모든 파일에서 `Cannot find module 'next/...'` 에러를 냄 — 내가 만든 파일
+  때문이 아니라 기존 파일 전부에서 동일하게 발생해 환경 문제임을 바로 확인함). 재시도할수록
+  `npm error ENOTEMPTY ... rename 'node_modules/next' -> 'node_modules/.next-xxxx'`가
+  반복 — 118번 항목의 "unlink 막힘" 문제와 같은 계열로, 이번엔 **디렉터리 rename**이 이
+  FUSE 마운트에서 안정적이지 않다는 새로운 사례. **복구 방법**: `npm pack next@15.1.12`로
+  타르볼만 받아 `/tmp`(로컬 디스크)에 풀고, `node_modules/next`는 깨진 채로 옆으로
+  `mv`(삭제 대신 이동 — 101/118번과 동일 우회)한 뒤, `cp -rn`(no-clobber)을 **여러 차례
+  나눠 재실행**(45초 타임아웃에 걸려도 이미 복사된 파일은 남아있으므로 재실행마다 이어서
+  진행됨 — rsync보다 매번 파일 목록을 다시 스캔하지 않는 `cp -rn`이 이 환경에서 더 안정적
+  이었음)해 6876개 파일 전체 복구, `npm ls next` 정상 확인 후 `tsc --noEmit` 클린 통과로
+  최종 검증. `node_modules/next.broken3_<timestamp>` 잔여물이 아직 남아있음(삭제 재시도 시
+  대량 "Operation not permitted" 로그만 쏟아져 방치 — `node_modules`는 `.gitignore` 대상이라
+  git에는 영향 없고 동작에도 무해, 여유 있을 때 정리 고려).
+- **교훈**: 이 샌드박스에서 `npm install <패키지>`(전체 `npm install`뿐 아니라 특정 패키지
+  단독 설치도 포함)는 **`next`처럼 파일 수가 많은 기존 패키지를 건드릴 위험이 있으므로
+  꼭 필요한 경우가 아니면 실행하지 말 것**. 이번처럼 부수적 목적(테스트 도구 확인)으로
+  가볍게 실행하지 말고, 정말 필요한 스키마/의존성 변경 작업일 때만 118번 사례처럼 신중하게
+  진행할 것.
+
+**검증**: `npx tsc --noEmit` EXIT 0(신규 파일 포함 전체 클린). vitest는 위 사유로 미실행 —
+유닛 테스트 기대값은 손으로 직접 계산해 작성(계산 과정은 이번 세션 로그에서 확인 가능).
+로컬 DB 접근 불가라 실제 화면 렌더링/데이터 집계 결과는 검증 못함.
+
+### 사용자 로컬 후속 조치 필요
+
+1. `git pull` 후 `cd app && npm run dev`로 `/analysis` 화면이 정상 렌더링되는지, 대시보드
+   "기록 분석" 카드 진입이 되는지 확인.
+2. `npm test`(vitest)로 `compute-analysis.test.ts`/`parse-snapshot.test.ts` 통과 확인 —
+   샌드박스에서 못 돌려본 유일한 부분이라 우선순위 높음.
+3. `npm run test:e2e`로 `analysis.spec.ts` 포함 9개 시나리오 통과 확인.
+4. 라운드 데이터가 쌓인 뒤(현재 프로덕션엔 거의 없음) 4개 탭 수치가 기대대로 나오는지
+   육안 확인 — 특히 GIR/페어웨이 안착률처럼 이 세션에서 근사치로 정의한 지표들.
+5. (선택) `node_modules/next.broken3_*` 잔여 폴더 정리 — 무해하지만 원하면 로컬에서
+   수동 삭제 가능.
+
+### 다음 세션 시작 시
+
+- 위 로컬 확인 결과 공유받으면 `doc/개발리스트.md` 15번 섹션의 🟡(e2e)/⬜(테스트계획서
+  갱신) 항목 완료로 갱신.
+- 날씨 예보(+6일, 06-2번) 기능은 여전히 보류 상태 — 재홍님이 다시 요청하면
+  `doc/기능기획_날씨예보및기록분석.md` 1장(중기예보 API, regId 매핑 등) 그대로 재개.

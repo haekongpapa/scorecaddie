@@ -11,6 +11,7 @@ const MENU_CARDS = [
   { href: "/courses", icon: "⛳", label: "골프장" },
   { href: "/rounds/new", icon: "✏️", label: "스코어 등록" },
   { href: "/rounds", icon: "📋", label: "스코어 조회" },
+  { href: "/analysis", icon: "📊", label: "기록 분석" },
   { href: "/profile", icon: "👤", label: "마이페이지" },
 ];
 
@@ -41,7 +42,7 @@ export default async function DashboardPage() {
         안녕하세요, {displayName}님
       </p>
 
-      <div className="mb-4 grid grid-cols-4 gap-2.5">
+      <div className="mb-4 grid grid-cols-3 gap-2.5">
         {MENU_CARDS.map((card) => (
           <Link
             key={card.href}

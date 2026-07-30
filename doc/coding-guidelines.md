@@ -71,6 +71,7 @@ app/
    - 외부 API 연동(`lib/weather`, `lib/geocoding` 등)은 **fail-soft**로 작성합니다 — 예외를 던지는 대신 `{data}` 또는 `{reason}` 형태로 실패 사유를 반환해, 호출부가 화면을 깨뜨리지 않고 자연스럽게 처리하게 합니다.
    - `route.ts`에서 DB 쓰기 등 실패 시 사용자에게 알려야 하는 작업은 `try/catch`로 감싸고, 반복되는 패턴이 늘어나면 공통 래퍼 함수(`withApiHandler` 등)를 `lib/`에 만들어 통일합니다.
 4. **로깅**: `winston` 대신 `console.error` / `console.warn` / `console.info`로 레벨을 구분해 사용합니다. ScoreCaddie는 Vercel 서버리스/엣지 배포를 전제로 하고 있어 파일 트랜스포트 기반의 winston은 잘 맞지 않고, Vercel이 stdout/stderr를 자동 수집하기 때문에 console 레벨 구분만으로 충분합니다. 로그를 외부 서비스로 모아야 할 필요가 생기면 그때 엣지 친화적인 `pino` 등을 검토합니다.
+5. **스타일링은 Tailwind 유틸리티 클래스가 기본이며, inline `style`은 쓰지 않는 것이 원칙입니다.** 단, 서버에서 매번 다르게 계산되는 수치(막대 그래프 너비 등)처럼 값 자체가 런타임에 결정되는 경우는 예외입니다 — Tailwind는 빌드 시 소스 코드에 등장하는 클래스 문자열을 정적으로 스캔해 CSS를 생성하므로, `` `w-[${pct}%]` `` 같은 동적 템플릿은 애초에 CSS가 생성되지 않아 스타일이 적용되지 않습니다. 이런 경우에 한해 `style={{ width: `${pct}%` }}` 형태의 inline style을 사용합니다 (`components/AnalysisTabs.tsx`, 15번 화면 참고, 2026-07-30 신규 사례).
 
 ## 5. 테스트
 
