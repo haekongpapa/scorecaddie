@@ -183,10 +183,14 @@ describe("computeAnalysis", () => {
   });
 
   it("④ 날씨: 기온 구간별 평균타수", () => {
+    // temperatureBucketLabel()의 경계값은 "미만" 기준이라 정확히 25도(R1)는
+    // "20~25°C"가 아니라 "25~30°C"에 들어간다(20도인 R5만 "20~25°C") — vitest 실행 결과로
+    // 발견해 수정(2026-07-30, 최초 작성 시 손계산에서 경계값을 잘못 넣었던 버그).
     expect(result.weather.byTemp).toEqual([
-      { label: "20°C 미만", avgStrokes: 13, count: 1, lowSample: true },
-      { label: "20~25°C", avgStrokes: 10, count: 2, lowSample: true },
-      { label: "30°C 이상", avgStrokes: 13, count: 1, lowSample: true },
+      { label: "20°C 미만", avgStrokes: 13, count: 1, lowSample: true }, // r2(18도)
+      { label: "20~25°C", avgStrokes: 11, count: 1, lowSample: true }, // r5(20도)
+      { label: "25~30°C", avgStrokes: 9, count: 1, lowSample: true }, // r1(25도)
+      { label: "30°C 이상", avgStrokes: 13, count: 1, lowSample: true }, // r4(30도)
     ]);
   });
 });
