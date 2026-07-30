@@ -1,49 +1,84 @@
 # ScoreCaddie
 
-- `doc/` — 분석/설계 요약 (PPT)
-- `db/` — 로컬 PostgreSQL (Docker Compose)
+개인(또는 소규모 그룹)의 골프 라운드 스코어를 골프장·일자·홀 단위로 기록하고 조회하는 웹 서비스입니다. Next.js + Prisma + PostgreSQL(Supabase) 기반으로 개발했고, 현재 [Vercel](https://scorecaddie.vercel.app/)에 배포되어 실사용 가능한 상태입니다.
+
+- **배포 주소**: https://scorecaddie.vercel.app/
+- **저장소**: https://github.com/haekongpapa/scorecaddie
+- **기술 스택**: Next.js 15(App Router) + TypeScript + Tailwind CSS + Prisma ORM 7 + PostgreSQL(Supabase) + NextAuth.js v5, 배포는 Vercel
+- **진행 상태**: 기획 → 설계 → 구현 → 테스트 → 배포 1주기 완료(MVP). 화면 14개(사용자 10 + 관리자 4) 전부 실구현, Playwright e2e 8개 시나리오 전체 통과.
+
+세부 진행 이력은 `memory.md`에 시간순으로 전부 기록되어 있습니다. 아래는 단계별 요약과 각 단계의 산출물(PPT/MD 문서) 안내입니다.
+
+---
+
+## 1. 프로젝트 개요
+
+개방형 회원가입(이메일/비밀번호 + 구글 소셜 로그인), 공공데이터포털 연동 골프장 목록, 기상청 날씨 연동, 2-Step 스코어 등록, 스코어 조회, 관리자용 골프장 Par 관리/회원 관리까지 총 8가지 핵심 기능으로 구성됩니다. 골프장은 9홀 단위 "루프"로 구성해 18/27/36홀 등 다양한 코스 구조를 지원합니다.
+
+**산출물**
+
+| 파일 | 설명 |
+|---|---|
+| `doc/ScoreCaddie_분석설계_요약.pptx` | 프로젝트 개요·핵심기능·기술스택을 포함한 전체 요약(1~5번 슬라이드) |
+
+## 2. 분석 / 설계
+
+핵심 기능 확정 → DB 스키마 설계(User/GolfCourse/GolfCourseLoop/GolfCourseHole/Round/HoleScore/GolfCourseSyncLog + NextAuth 3테이블) → 화면 14개 설계 및 HTML 목업 작성 → 정책 결정사항(로그인 방식, 관리자 권한, 데이터 소스 등) 확정 순으로 진행했습니다.
+
+**산출물**
+
+| 파일 | 설명 |
+|---|---|
+| `doc/ScoreCaddie_분석설계_요약.pptx` | DB 스키마·컬럼 정의·화면 설계 상세(6~10번 슬라이드), v5(2026-07-29 최신화) |
+| `doc/pages.md` | 화면 14개 상세 설계 문서(경로/레이아웃/컴포넌트/데이터 의존성) |
+| `doc/mockups/*.html` | 화면별 HTML 목업 19개 |
+
+## 3. 구현
+
+사용자 화면 10개(랜딩~라운드 상세)와 관리자 화면 4개(Par 관리~회원 관리)를 전부 실구현했습니다. 골프장 공공데이터 실시간 연동(증분 동기화 포함), 좌표 지오코딩 배치, 기상청 날씨 연동, CSV 일괄 업로드 등 배치성 기능도 포함됩니다. 단위 테스트(Vitest)와 Playwright e2e(8개 시나리오)로 핵심 플로우와 관리자 기능을 전부 검증했습니다.
+
+**산출물**
+
+| 파일 | 설명 |
+|---|---|
+| `doc/ScoreCaddie_분석설계_요약.pptx` | 관리자 화면 4종·공공데이터 연동/지오코딩·테스트 현황(11~16번 슬라이드) |
+| `doc/coding-guidelines.md` | 디렉터리 구조·TypeScript 규칙·코딩 스타일 가이드 |
+| `doc/admin-golfcourse-sync.md` | 골프장 공공데이터 동기화 설계(API 스펙, 페이지네이션, 증분 조회 조건) |
+| `doc/admin-csv-upload.md` | 관리자 CSV 일괄 업로드 처리 로직 설계 |
+| `doc/ScoreCaddie_테스트계획서.pptx` | Vitest/Playwright 테스트 계획 및 시나리오 8개 결과 |
+| `doc/ScoreCaddie_지침관리방안.pptx` | 코딩 가이드 문서 운영 방침(자동로드 vs 별도문서 검토) |
+| `doc/개발리스트.md` | 화면·기능 단위 구현 상태 체크리스트 |
+
+## 4. 배포
+
+배포 스택 비교 검토(Vercel+Neon vs Vercel+Supabase) 후 Vercel + Supabase로 최종 결정했습니다. Supabase에 PostgreSQL을 구성하고(로컬 개발·Preview·Production이 동일 DB를 공유), Vercel에 프로젝트를 연결해 첫 배포까지 완료했습니다. 배포 중 발견된 Next.js 취약점(CVE-2025-66478) 대응 등 이슈 해결 이력도 문서에 포함되어 있습니다.
+
+**산출물**
+
+| 파일 | 설명 |
+|---|---|
+| `doc/ScoreCaddie_배포방안_검토_v2.pptx` | 배포 플랫폼 비교 검토 및 PM 추천안(Vercel+Supabase 결정 근거) |
+| `doc/supabase-deploy-guide.md` | Supabase 프로젝트 생성·연결 문자열 설정 가이드 |
+| `doc/vercel-deploy-guide.md` | Vercel 프로젝트 생성·환경변수·배포 완료 체크리스트 |
+| `doc/ScoreCaddie_분석설계_요약.pptx` | 테스트&배포 현황(13번 슬라이드) |
+
+---
+
+## 개발 환경 빠른 시작
+
+```
+cd app
+npm install
+npx prisma generate
+npm run dev
+```
+
+로컬 개발도 Supabase DB를 공유하므로 별도 로컬 DB 기동이 필요 없습니다(`app/.env`의 `DATABASE_URL` 참고). VS Code 워크스페이스 설정은 `.vscode/`에 준비되어 있습니다(추천 확장: Prisma, ESLint, Prettier, Tailwind CSS IntelliSense).
+
+## 디렉터리 구조
+
+- `doc/` — 분석/설계/배포 문서 및 목업 (PPT, MD, HTML)
 - `app/` — 개발 소스 (Next.js + Prisma + NextAuth)
-- `.vscode/` — VS Code 워크스페이스 설정 (아래 참고)
-
-## VS Code 설치 및 연동
-
-1. https://code.visualstudio.com 접속 → Windows용 다운로드 → 설치 (기본 옵션 그대로 진행)
-2. VS Code 실행 → `File > Open Folder` → 이 `ScoreCaddie` 폴더 선택
-3. 폴더를 열면 우측 하단에 "추천 확장 프로그램을 설치하시겠습니까?" 알림이 뜹니다 → **설치** 클릭
-   (Prisma, ESLint, Prettier, Tailwind CSS IntelliSense, Docker, EditorConfig 자동 추천)
-   알림을 놓쳤다면: 좌측 사이드바 확장 아이콘 → 검색창에 `@recommended` 입력 → 목록에서 전체 설치
-4. 이미 구성해둔 작업 단축 실행 (`Ctrl+Shift+P` → `Tasks: Run Task`):
-   - `DB: docker compose up` — PostgreSQL 기동
-   - `App: npm install` — 패키지 설치
-   - `App: prisma migrate dev` — DB 스키마 반영
-   - `App: dev server` — 개발 서버 실행
-5. 디버깅: 좌측 "실행 및 디버그" 탭 → `Next.js: dev (app)` 선택 후 F5
-   (프론트 콜스택까지 보려면 `Next.js: attach to Chrome` 함께 사용)
-
-## 빠른 시작 (터미널)
-```
-cd db && docker compose up -d
-cd ../app && npm install && npx prisma migrate dev && npm run dev
-```
-자세한 내용은 각 폴더의 README 참고.
-
-## GitHub 연동
-
-저장소: https://github.com/haekongpapa/scorecaddie (이미 README.md 1개 커밋 존재)
-
-`.gitignore` 는 이미 준비되어 있습니다 (`app/node_modules`, `app/.env`, `app/.next` 등 제외).
-
-VS Code 터미널에서 `ScoreCaddie` 폴더 기준으로:
-```
-git init
-git add .
-git commit -m "Initial commit: ScoreCaddie dev environment"
-git branch -M main
-git remote add origin https://github.com/haekongpapa/scorecaddie.git
-git push -u origin main --force
-```
-`--force` 는 원격에 있던 자동생성 README(커밋 1개)를 지금 커밋으로 덮어쓰기 위함입니다 — 지울 내용이 없는 초기 상태라 안전합니다. 이후부터는 `--force` 없이 `git push` 만 쓰면 됩니다.
-
-푸시 시 브라우저로 GitHub 로그인 창이 뜨면 로그인하면 됩니다 (Git Credential Manager).
-
-이미 `.git` 폴더가 있는데 안 될 경우: 폴더 탐색기에서 `ScoreCaddie\.git` 폴더를 먼저 수동 삭제한 뒤 위 명령을 다시 실행하세요.
+- `db/` — 초기 로컬 PostgreSQL 설정(Docker Compose, 현재는 Supabase로 전환되어 미사용)
+- `.vscode/` — VS Code 워크스페이스 설정
+- `memory.md` — 프로젝트 진행 이력 전체(시간순 작업 로그, 세션 간 컨텍스트 유지용)
