@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><title>ScoreCaddie - 골프장 상세 (주간 날씨)</title><link rel="stylesheet" href="_shared.css"></head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>ScoreCaddie</span></div>
+  <div class="topbar"><a href="05-courses.html" class="back">‹ 뒤로</a><h1>골프장 상세</h1><span></span></div>
+  <div class="content">
+    <div id="map-box" style="background:var(--card-bg2); border-radius:12px; height:100px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; color:var(--text-muted); font-size:12px;">지도 (좌표 기반)</div>
+    <h2 style="font-size:18px; margin:0 0 4px;">레이크사이드 CC</h2>
+    <p class="muted" style="margin:0 0 16px;">경기도 용인시 처인구 · 18홀 · 민간</p>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+      <h2 class="section-title" style="margin:0;">이번 주 날씨 (오늘~+6일)</h2>
+      <span class="badge">신규</span>
+    </div>
+
+    <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:8px;">
+      <div style="flex:0 0 auto; width:66px; text-align:center; background:var(--card-bg); border-radius:10px; padding:10px 4px;">
+        <div style="font-size:11px; color:var(--primary); font-weight:700;">오늘</div>
+        <div style="font-size:20px; margin:6px 0;">☀️</div>
+        <div style="font-size:12px; font-weight:700;">27°</div>
+        <div style="font-size:10px; color:var(--text-muted);">18°</div>
+      </div>
+      <div style="flex:0 0 auto; width:66px; text-align:center; background:var(--card-bg); border-radius:10px; padding:10px 4px;">
+        <div style="font-size:11px; color:var(--text-muted); font-weight:600;">내일</div>
+        <div style="font-size:20px; margin:6px 0;">⛅</div>
+        <div style="font-size:12px; font-weight:700;">26°</div>
+        <div style="font-size:10px; color:var(--text-muted);">17°</div>
+      </div>
+      <div style="flex:0 0 auto; width:66px; text-align:center; background:var(--card-bg); border-radius:10px; padding:10px 4px;">
+        <div style="font-size:11px; color:var(--text-muted); font-weight:600;">모레</div>
+        <div style="font-size:20px; margin:6px 0;">🌧️</div>
+        <div style="font-size:12px; font-weight:700;">23°</div>
+        <div style="font-size:10px; color:var(--text-muted);">16°</div>
+      </div>
+      <div style="flex:0 0 auto; width:66px; text-align:center; background:var(--card-bg); border-radius:10px; padding:10px 4px;">
+        <div style="font-size:11px; color:var(--text-muted); font-weight:600;">글피</div>
+        <div style="font-size:20px; margin:6px 0;">☁️</div>
+        <div style="font-size:12px; font-weight:700;">25°</div>
+        <div style="font-size:10px; color:var(--text-muted);">17°</div>
+      </div>
+      <div style="flex:0 0 auto; width:66px; text-align:center; background:var(--card-bg2); border:1px dashed var(--border); border-radius:10px; padding:10px 4px;">
+        <div style="font-size:10.5px; color:var(--text-muted); font-weight:600;">8/3(월)</div>
+        <div style="font-size:15px; margin:6px 0;">🌤️</div>
+        <div style="font-size:9.5px; color:var(--text-muted); line-height:1.3;">오전 ☀️<br>오후 ⛅</div>
+        <div style="font-size:11px; font-weight:700; margin-top:4px;">29°</div>
+        <div style="font-size:10px; color:var(--text-muted);">21°</div>
+      </div>
+      <div style="flex:0 0 auto; width:66px; text-align:center; background:var(--card-bg2); border:1px dashed var(--border); border-radius:10px; padding:10px 4px;">
+        <div style="font-size:10.5px; color:var(--text-muted); font-weight:600;">8/4(화)</div>
+        <div style="font-size:15px; margin:6px 0;">🌧️</div>
+        <div style="font-size:9.5px; color:var(--text-muted); line-height:1.3;">오전 ⛅<br>오후 🌧️</div>
+        <div style="font-size:11px; font-weight:700; margin-top:4px;">24°</div>
+        <div style="font-size:10px; color:var(--text-muted);">19°</div>
+      </div>
+      <div style="flex:0 0 auto; width:66px; text-align:center; background:var(--card-bg2); border:1px dashed var(--border); border-radius:10px; padding:10px 4px;">
+        <div style="font-size:10.5px; color:var(--text-muted); font-weight:600;">8/5(수)</div>
+        <div style="font-size:15px; margin:6px 0;">⛅</div>
+        <div style="font-size:9.5px; color:var(--text-muted); line-height:1.3;">오전 ☀️<br>오후 ⛅</div>
+        <div style="font-size:11px; font-weight:700; margin-top:4px;">27°</div>
+        <div style="font-size:10px; color:var(--text-muted);">20°</div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:10.5px; margin:0 0 18px; line-height:1.5;">
+      오늘~글피(점선 없는 카드)는 단기예보(3시간 간격 상세), 이후 3일(점선 카드)은 중기예보 기준으로
+      오전/오후 하늘상태와 최고·최저기온만 제공됩니다.
+    </p>
+
+    <a href="07-round-new-step1.html?course=%EB%A0%88%EC%9D%B4%ED%81%AC%EC%82%AC%EC%9D%B4%EB%93%9C+CC" class="btn" style="margin-bottom:20px;">이 골프장에서 스코어 등록</a>
+
+    <h2 class="section-title">내 라운드 이력</h2>
+    <a href="09-round-detail.html" class="list-item">
+      <div><div class="title">2026.07.12</div></div>
+      <div class="value">88타</div>
+    </a>
+    <a href="09-round-detail.html" class="list-item">
+      <div><div class="title">2026.06.28</div></div>
+      <div class="value">85타</div>
+    </a>
+  </div>
+  <div class="screen-label">6-2. 골프장 상세 — 주간 날씨 위젯 추가안 (제안, 미확정)</div>
+</div>
+</body></html>
