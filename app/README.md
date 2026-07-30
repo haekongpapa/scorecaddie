@@ -1,83 +1,76 @@
 # ScoreCaddie 개발 소스 (app)
 
-Next.js 15 (App Router) + TypeScript + Tailwind + Prisma 7 + NextAuth(Auth.js v5) 뼈대.
-DB 설계는 `docs` 분석/설계 요약 PPT 기준 (User / GolfCourse / Round / HoleScore).
+Next.js 15 (App Router) + TypeScript + Tailwind CSS + Prisma ORM 7 + NextAuth(Auth.js v5).
+DB는 Supabase PostgreSQL 하나를 로컬 개발·Vercel Preview·Production이 그대로 공유합니다(별도 로컬 DB 없음, 2026-07-28 전환).
 
 ## 폴더 구조
 ```
 app/
-  prisma/schema.prisma      DB 스키마 (8개 테이블: User/Account/Session/VerificationToken/GolfCourse/GolfCourseHole/Round/HoleScore)
-  prisma/migrations/        생성된 마이그레이션 (init, add_golf_course_hole_par, add_user_role)
-  prisma.config.ts          Prisma 7 CLI 설정 (migrate용 DATABASE_URL)
-  src/lib/prisma.ts         런타임 PrismaClient (adapter-pg)
-  src/auth.ts                NextAuth 설정 (이메일/비밀번호 + 구글 + 카카오)
-  src/app/                  페이지 (랜딩/로그인/회원가입/대시보드/골프장/스코어)
-  src/middleware.ts          보호 라우트 (대시보드 등 로그인 필요)
+  prisma/schema.prisma      DB 스키마 — 7개 핵심 테이블(User/GolfCourse/GolfCourseSyncLog/
+                             GolfCourseLoop/GolfCourseHole/Round/HoleScore) + NextAuth 3개
+                             (Account/Session/VerificationToken)
+  prisma/migrations/        마이그레이션 9건 (init ~ add_golf_course_sync_log)
+  prisma.config.ts          Prisma 7 CLI 설정 (migrate 등 CLI용 DATABASE_URL)
+  src/lib/prisma.ts         런타임 PrismaClient (@prisma/adapter-pg)
+  src/lib/config/env.ts     환경변수 접근 창구 (다른 파일은 process.env 직접 참조 안 함)
+  src/auth.ts / auth.config.ts   NextAuth 설정 (이메일/비밀번호 + 구글 소셜 로그인)
+  src/middleware.ts          보호 라우트 + role=ADMIN 접근 제어
+  src/app/                  페이지(랜딩~마이페이지, 관리자 4개) + api/ 라우트
+  e2e/                       Playwright e2e 테스트 (8개 시나리오)
+  e2e/mocks/                 외부 API(공공데이터/카카오) 로컬 목 서버 — e2e 전용
 ```
-
-## ⚠️ 시작 전 확인
-`node_modules` 폴더가 이미 있다면(작업 과정에서 생긴 불완전한 임시 설치본입니다) **먼저 수동으로 삭제**해주세요.
-탐색기에서 `app/node_modules` 폴더 삭제 (또는 PowerShell에서 `Remove-Item -Recurse -Force node_modules`) 후 아래 순서대로 진행하면 됩니다.
 
 ## 실행 순서
 
-### 1. DB 먼저 띄우기
+### 1. 패키지 설치
 ```
-cd ../db
-docker compose up -d
-```
-
-### 2. 패키지 설치
-```
-cd ../app
+cd app
 npm install
 ```
+`postinstall` 스크립트가 `prisma generate`를 자동 실행합니다.
 
-### 3. DB 스키마 반영
-`.env` 는 이미 `db/docker-compose.yml` 값과 맞춰 채워져 있습니다 (수정 불필요).
-```
-npx prisma migrate dev
-```
-→ `prisma/migrations` 에 이미 포함된 초기 마이그레이션이 그대로 적용됩니다.
+### 2. 환경변수 확인
+`.env`에 아래 값이 이미 채워져 있습니다 (별도 설정 불필요):
 
-### 4. 개발 서버 실행
+`DATABASE_URL` · `AUTH_SECRET` · `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` · `PUBLIC_DATA_API_KEY` · `WEATHER_API_KEY` · `KAKAO_REST_API_KEY`
+
+`DATABASE_URL`은 Supabase Session Pooler 연결 문자열입니다. 로컬 개발·Vercel Preview·Production이 전부 이 DB 하나를 공유하므로 별도 로컬 Postgres(Docker)를 띄울 필요가 없습니다 (`db/` 폴더는 초기 세팅 흔적으로만 남아있고 현재 미사용).
+
+### 3. 개발 서버 실행
 ```
 npm run dev
 ```
 http://localhost:3000 접속
 
-## 검증 완료 사항 (2026-07-15)
-샌드박스 임시환경에서 아래를 실제로 실행하여 검증했습니다 (PC에는 남지 않음, 코드 정확성 확인용):
-- `npx prisma generate` / `npx prisma validate` 정상
-- `npx prisma migrate dev` — 실제 PostgreSQL에 8개 테이블 생성 성공 (GolfCourseHole 포함)
-- `src/lib/prisma.ts` 의 adapter-pg 방식으로 User/GolfCourse/GolfCourseHole/Round/HoleScore 생성 및 관계 조회(include) 정상 동작 — 골프장 18홀 Par 등록 → 라운드 등록 시 HoleScore.par 스냅샷 저장까지 end-to-end 확인
-- `new PrismaPg(pool)` (pg Pool 인스턴스를 직접 넘기는 방식)은 실제 쿼리 실행 시 `ERR_INVALID_ARG_TYPE` 오류로 깨지는 것을 확인하여, `new PrismaPg({ connectionString })` 방식으로 확정함
+## 스키마 변경 시
+`prisma/schema.prisma`를 수정했다면:
+```
+npx prisma migrate dev --name <설명>
+```
+Supabase(공유 DB)에 바로 반영되고 `prisma/migrations/`에 마이그레이션 파일이 새로 생성됩니다 — git에 커밋해주세요.
 
-### GolfCourseHole / Par 관련 참고
-- `GolfCourseHole` — 골프장별 18홀 규정타수(Par). 공공데이터에 없는 값이라 관리자가 직접 입력/보정.
-- `HoleScore.par` — 라운드 등록 시점의 Par 스냅샷. 이후 골프장 Par가 바뀌어도 과거 라운드 기록은 그대로 유지됨.
+## 테스트
 
-### User.role (관리자 화면 접근 제어)
-- `Role` enum (`USER` | `ADMIN`), 기본값 `USER`. 골프장 Par 등록/CSV 업로드 등 관리자 전용 화면을 이 값으로 구분한다.
-- 샌드박스에서 `role: 'ADMIN'` 생성, 기본값 `USER` 적용, `role` 조건 조회까지 실제 쿼리로 검증 완료.
-- 최초 관리자 계정은 가입 폼으로 만들 수 없으므로(기본값 USER), DB에서 직접 `role`을 `ADMIN`으로 올려주거나 시드 스크립트로 지정해야 함.
+### 단위 테스트 (Vitest)
+```
+npm run test
+```
 
-### 관리자 화면 (11~13번, doc/pages.md)
-- 골프장 Par 관리 목록 → 개별 Par 입력/수정 → CSV 일괄 업로드. 목업: `doc/mockups/11-admin-courses.html` ~ `13-admin-upload.html`
-- CSV 업로드 처리 로직(포맷/매칭/오류 처리) 상세 설계: `doc/admin-csv-upload.md`
+### e2e 테스트 (Playwright)
+```
+npm run test:e2e
+```
+실행 전 기존에 띄워둔 `npm run dev`가 있다면 **반드시 먼저 종료**해주세요 — Playwright가 새 서버를 띄우지 않고 기존 서버를 재사용하면 목 서버 관련 환경변수가 반영 안 된 상태라 관리자 시나리오(공공데이터 동기화 등)가 실패할 수 있습니다. 테스트 계정/데이터는 `e2e/fixtures/`에서 자동 생성되고 `global-teardown`으로 정리됩니다.
 
-## 아직 채워야 할 값 (.env)
-- `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` — 카카오 소셜 로그인 (Kakao Developers, 사용자가 별도 진행 중)
-- `WEATHER_API_KEY` — 기상청 단기예보 API
+## 핵심 참고사항
+- **관리자 계정**: 최초 관리자는 가입 폼으로 만들 수 없습니다(기본 `role=USER`). Supabase에서 해당 계정의 `role`을 `ADMIN`으로 직접 변경해야 합니다.
+- **소셜 로그인**: 구글만 지원합니다. 카카오 OAuth 로그인은 2026-07-22 사용자 요청으로 삭제됐습니다(`KAKAO_REST_API_KEY`는 로그인용이 아니라 골프장 좌표 지오코딩의 주소 검색용 별개 키입니다).
+- **골프장 데이터**: 공공데이터포털 실시간 API로 동기화합니다(`doc/admin-golfcourse-sync.md` 참고). 좌표는 TM 중부원점(EPSG:5174) → WGS84 변환 후, 실패 시 카카오 주소 검색으로 폴백합니다.
+- **골프장 루프/Par**: `GolfCourseLoop`(9홀 단위 구간, 전반/후반 등) → `GolfCourseHole`(루프별 규정타수). `HoleScore.par`는 라운드 등록 시점의 스냅샷이라 이후 Par가 바뀌어도 과거 기록은 그대로 유지됩니다.
 
-`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`(구글 로그인 실사용 확인 완료)와
-`PUBLIC_DATA_API_KEY`(골프장 공공 데이터 API, `doc/admin-golfcourse-sync.md` 참고)는
-이미 값이 채워져 있습니다.
-
-`AUTH_SECRET` 은 이미 랜덤 값으로 채워져 있습니다 (운영 배포 시에는 새로 발급 권장).
-
-## 다음 구현 단계 (미구현, 페이지만 뼈대)
-- 골프장 목록/상세 (공공데이터 연동)
-- 스코어 등록/조회
-- 날씨 연동
-- 로그인/회원가입 폼 UI
+## 관련 문서
+- 화면 설계: `../doc/pages.md`
+- 프로젝트 전체 요약(개요/DB/화면/구현/배포): `../doc/ScoreCaddie_분석설계_요약.pptx`
+- 배포 가이드: `../doc/supabase-deploy-guide.md`, `../doc/vercel-deploy-guide.md`
+- 코딩 가이드: `../doc/coding-guidelines.md`
+- 진행 이력 전체: `../memory.md`
