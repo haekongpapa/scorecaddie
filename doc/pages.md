@@ -260,6 +260,11 @@ DB 스키마 근거: `prisma/schema.prisma` (User, GolfCourse, GolfCourseLoop, G
 - **WeatherBadge**: 날씨 스냅샷 표시 (7, 8, 9번 화면)
 - **EmptyState**: 데이터 없음 공통 안내 컴포넌트
 - **AdminGuard**: `role !== ADMIN`이면 관리자 라우트 접근을 차단하는 서버 사이드 가드 (11~14번 화면 공통)
+- **전역 화면 전환 로딩(`loading.tsx`)**: Next.js App Router 컨벤션 — 루트(`app/src/app/loading.tsx`)
+  하나로 모든 화면 이동 시 목적지 페이지의 서버 데이터 조회가 끝날 때까지 중앙 원형
+  스피너를 자동 표시(2026-07-30 신규). 기존 관리자 화면의 "동기화/지오코딩 실행 중"
+  전체화면 오버레이(어두운 배경+흰 스피너)와는 별개 — 이쪽은 버튼 클릭 후 API 응답을
+  기다리는 인페이지 로딩이고, `loading.tsx`는 화면 자체를 이동할 때만 뜬다.
 
 ## 화면 흐름도
 
