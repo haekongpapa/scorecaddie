@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 export type Step1Loop = { id: string; name: string };
@@ -22,6 +22,11 @@ export default function RoundStep1({
   initialCourseId?: string;
 }) {
   const router = useRouter();
+  // Step1→Step2는 경로(pathname)가 그대로 `/rounds/new`이고 쿼리(`?step=`)만 바뀌는 구조라
+  // 전역 app/loading.tsx(라우트 세그먼트 전환에만 반응)가 뜨지 않는다(2026-07-30 확인).
+  // useTransition으로 router.push의 대기 상태를 직접 감지해 이 화면에서만 로컬 오버레이를
+  // 띄운다 — 스타일은 PublicDataSyncCard/GeocodeBatchCard의 전체화면 오버레이 재사용.
+  const [isPending, startTransition] = useTransition();
 
   // 6번(골프장 상세) "이 골프장에서 스코어 등록"에서 넘어온 initialCourseId가 필터링된
   // courses 목록에 없을 수 있다(루프 미등록/비영업 상태 골프장 — 2026-07-29 서버 조회 조건
@@ -174,8 +179,8 @@ export default function RoundStep1({
     if (!courseId) return;
     setDuplicateError(null);
     setChecking(true);
+    const time = startTime24();
     try {
-      const time = startTime24();
       const checkParams = new URLSearchParams({ courseId, date, startTime: time });
       const res = await fetch(`/api/rounds/check-duplicate?${checkParams.toString()}`);
       const data = await res.json();
@@ -183,33 +188,29 @@ export default function RoundStep1({
         setDuplicateError(data.message ?? "동일한 조건으로 이미 등록된 스코어가 있습니다.");
         return;
       }
-
-      const params = new URLSearchParams();
-      params.set("step", "2");
-      params.set("courseId", courseId);
-      params.set("holesPlayed", String(holesPlayed));
-      params.set("date", date);
-      params.set("startTime", time);
-      if (frontLoopId) params.set("frontLoopId", frontLoopId);
-      if (holesPlayed === 18 && backLoopId) params.set("backLoopId", backLoopId);
-      router.push(`/rounds/new?${params.toString()}`);
     } catch {
       // 중복 확인 실패 시에도 등록 자체는 막지 않는다 — 최종 방어선은 POST /api/rounds에도 있음.
-      const params = new URLSearchParams();
-      params.set("step", "2");
-      params.set("courseId", courseId);
-      params.set("holesPlayed", String(holesPlayed));
-      params.set("date", date);
-      params.set("startTime", startTime24());
-      if (frontLoopId) params.set("frontLoopId", frontLoopId);
-      if (holesPlayed === 18 && backLoopId) params.set("backLoopId", backLoopId);
-      router.push(`/rounds/new?${params.toString()}`);
     } finally {
       setChecking(false);
     }
+
+    const params = new URLSearchParams();
+    params.set("step", "2");
+    params.set("courseId", courseId);
+    params.set("holesPlayed", String(holesPlayed));
+    params.set("date", date);
+    params.set("startTime", time);
+    if (frontLoopId) params.set("frontLoopId", frontLoopId);
+    if (holesPlayed === 18 && backLoopId) params.set("backLoopId", backLoopId);
+
+    // router.push를 startTransition으로 감싸야 isPending이 "다음 화면 렌더 준비가 끝날 때까지"
+    // true로 유지된다(그냥 호출하면 push 자체는 동기적으로 끝나버려 대기 상태를 못 잡음).
+    startTransition(() => {
+      router.push(`/rounds/new?${params.toString()}`);
+    });
   }
 
-  const canProceed = Boolean(courseId) && !checking;
+  const canProceed = Boolean(courseId) && !checking && !isPending;
 
   return (
     <div>
@@ -441,8 +442,15 @@ export default function RoundStep1({
         onClick={goNext}
         className="block w-full rounded-lg bg-primary py-3 text-center text-sm font-semibold text-white disabled:opacity-50"
       >
-        {checking ? "확인 중..." : "스코어 카드 ›"}
+        {checking ? "확인 중..." : isPending ? "이동 중..." : "스코어 카드 ›"}
       </button>
+
+      {isPending && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-black/50">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-white border-t-transparent" />
+          <div className="text-[13px] font-semibold text-white">스코어 입력 화면으로 이동 중입니다...</div>
+        </div>
+      )}
     </div>
   );
 }
