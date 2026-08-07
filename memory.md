@@ -2916,6 +2916,17 @@ AskUserQuestion으로 확인 → **1)은 이 화면에만 로컬 오버레이 �
 유지하기로 확정. 이미 만들어진 `name`/`image`가 비어있는 테스트 계정 행은 앞으로도
 재홍님이 Supabase에서 직접 정리하거나 재가입하는 방식으로 처리.
 
+
+### 5) Vercel 프로덕션 배포 시 필요한 값 안내 (재홍님 질문, 2026-08-07)
+
+"vercel에 배포된 경우 서비스 id와 콜백 주소" 질문에 답변 — 배포 도메인은 118번 항목에서
+확정된 `https://scorecaddie.vercel.app/`. 네이버는 구글과 달리 Client ID/Secret 자체는
+로컬·프로덕션 공용(재발급 불필요)이고, 네이버 개발자센터에 **서비스 URL**
+(`https://scorecaddie.vercel.app`)과 **Callback URL**
+(`https://scorecaddie.vercel.app/api/auth/callback/naver`) 두 개만 추가 등록하면 됨.
+Vercel 환경변수에도 `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` 추가 필요(로컬 `.env`와 동일한 값).
+`doc/vercel-deploy-guide.md`에 4-1번 섹션·환경변수 표·체크리스트로 반영 완료.
+
 ### 다음 세션 시작 시
 
 - 재홍님이 (a) 네이버 로그인이 정상적으로 되는지, (b) 새로 가입/연결한 계정의 이름이
