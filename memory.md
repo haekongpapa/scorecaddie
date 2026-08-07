@@ -3089,7 +3089,23 @@ GOLF 라벨을 추가한 스코어카드 로고(`doc/logo/scorecard-logo.svg`)�
   **실제 삭제 동작(로그인 → 탈퇴 → DB에서 User/Account/Round/HoleScore 전부 사라졌는지)은
   재홍님 로컬 확인 필요**.
 
+### 골프장/Par 데이터는 절대 삭제 안 됨 (재홍님 확인 요청, 2026-08-07)
+
+재홍님이 "골프장코스, 코스별 파 관리 정보는 회원 탈퇴와 무관 삭제되면 안됨" 확인 요청 —
+schema.prisma 추론이 아니라 **실제 적용된 마이그레이션 SQL**까지 재확인:
+
+- `Round.golfCourseId → GolfCourse.id`는 `ON DELETE RESTRICT`(20260715015444_init) —
+  라운드가 참조 중인 골프장은 DB 차원에서 삭제 자체가 거부됨.
+- `GolfCourse`/`GolfCourseLoop`/`GolfCourseHole`는 `User`를 참조하는 FK가 아예 없음.
+  User 삭제 시 cascade 경로는 `User → Account/Session/Round → HoleScore` 하나뿐이고
+  골프장 쪽으로는 전혀 안 이어짐.
+- `DELETE /api/me` 코드도 `prisma.user.delete()` 한 줄뿐, 다른 테이블 건드리는 로직 없음.
+
+결론: 회원 탈퇴는 계정·연동정보·본인 라운드·홀스코어만 지우고, 골프장/루프/Par 데이터는
+구조적으로 영향받지 않음을 확인 완료.
+
 ### 다음 세션 시작 시
 
 - 재홍님이 로컬에서 (a) 이메일/비밀번호 계정 탈퇴, (b) 소셜(구글/네이버) 계정 탈퇴 둘 다
-  테스트해서 정상 삭제/로그아웃되는지 확인 결과 알려주면 종료.
+  테스트해서 정상 삭제/로그아웃되는지, 그리고 골프장 데이터가 그대로 남아있는지 확인
+  결과 알려주면 종료.
