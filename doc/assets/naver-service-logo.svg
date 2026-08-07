@@ -1,0 +1,28 @@
+<svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="35%" cy="28%" r="85%">
+      <stop offset="0%" stop-color="#2c6b3f"/>
+      <stop offset="100%" stop-color="#1a4425"/>
+    </radialGradient>
+  </defs>
+
+  <!-- full-bleed square background (no transparency) -->
+  <rect x="0" y="0" width="140" height="140" fill="url(#bg)"/>
+
+  <!-- ground mound -->
+  <ellipse cx="70" cy="113" rx="50" ry="10" fill="#6fa167"/>
+
+  <!-- flag pole -->
+  <rect x="68" y="28" width="4" height="85" rx="2" fill="#f4efe6"/>
+
+  <!-- flag -->
+  <path d="M72 32 L106 43 L72 54 Z" fill="#d99a3c"/>
+
+  <!-- golf ball -->
+  <circle cx="44" cy="107" r="11" fill="#f4efe6"/>
+  <circle cx="40" cy="103" r="1.4" fill="#c9c2b3"/>
+  <circle cx="47.5" cy="103.5" r="1.4" fill="#c9c2b3"/>
+  <circle cx="42.5" cy="110" r="1.4" fill="#c9c2b3"/>
+  <circle cx="49" cy="109.5" r="1.4" fill="#c9c2b3"/>
+  <circle cx="44.5" cy="115" r="1.4" fill="#c9c2b3"/>
+</svg>
