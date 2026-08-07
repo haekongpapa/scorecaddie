@@ -103,6 +103,15 @@ export default async function ProfilePage() {
           <span className="text-[11px] text-muted">준비 중</span>
         </div>
         <LogoutListItem />
+        <Link
+          href="/profile/delete-account"
+          className="flex items-center justify-between rounded-lg bg-card-bg px-3.5 py-3"
+        >
+          <span className="text-[13.5px] font-semibold text-[#D85A30]">
+            회원 탈퇴
+          </span>
+          <span className="text-muted">›</span>
+        </Link>
       </div>
 
       <NavBar />
