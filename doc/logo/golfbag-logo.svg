@@ -1,0 +1,27 @@
+<svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg3" cx="35%" cy="28%" r="85%">
+      <stop offset="0%" stop-color="#2c6b3f"/>
+      <stop offset="100%" stop-color="#1a4425"/>
+    </radialGradient>
+  </defs>
+  <rect width="140" height="140" fill="url(#bg3)"/>
+
+  <!-- ground -->
+  <ellipse cx="70" cy="118" rx="48" ry="8" fill="#6fa167"/>
+
+  <!-- strap -->
+  <path d="M60 62 Q44 80 56 102" stroke="#6fa167" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- club shafts -->
+  <line x1="58" y1="26" x2="72" y2="80" stroke="#f4efe6" stroke-width="4" stroke-linecap="round"/>
+  <line x1="84" y1="22" x2="76" y2="80" stroke="#f4efe6" stroke-width="4" stroke-linecap="round"/>
+  <!-- club heads -->
+  <circle cx="58" cy="26" r="5" fill="#d99a3c"/>
+  <circle cx="84" cy="22" r="5" fill="#d99a3c"/>
+
+  <!-- bag body -->
+  <path d="M52 70 Q52 60 62 60 L88 60 Q98 60 98 70 L94 112 Q94 118 88 118 L62 118 Q56 118 56 112 Z" fill="#f4efe6"/>
+  <!-- bag stripe -->
+  <rect x="52" y="83" width="46" height="10" fill="#d99a3c"/>
+</svg>
