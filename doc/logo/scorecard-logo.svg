@@ -7,18 +7,23 @@
   </defs>
   <rect width="140" height="140" fill="url(#bg2)"/>
 
-  <!-- scorecard clip -->
-  <rect x="58" y="20" width="24" height="14" rx="4" fill="#d99a3c"/>
-
   <!-- scorecard body -->
-  <rect x="38" y="26" width="64" height="88" rx="8" fill="#f4efe6"/>
+  <rect x="36" y="34" width="64" height="82" rx="8" fill="#f4efe6"/>
+
+  <!-- golf flag pin, planted into the card like a clip -->
+  <rect x="66" y="10" width="4" height="30" rx="2" fill="#f4efe6"/>
+  <path d="M70 13 L94 21 L70 29 Z" fill="#d99a3c"/>
+
+  <!-- "GOLF" label under the flag, inside the card -->
+  <text x="68" y="52" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+        font-weight="700" font-size="12" letter-spacing="1.5" fill="#1f4d2c">GOLF</text>
 
   <!-- score rows -->
-  <rect x="50" y="46" width="40" height="5" rx="2.5" fill="#c9c2b3"/>
-  <rect x="50" y="58" width="40" height="5" rx="2.5" fill="#c9c2b3"/>
-  <rect x="50" y="70" width="26" height="5" rx="2.5" fill="#c9c2b3"/>
+  <rect x="48" y="62" width="40" height="5" rx="2.5" fill="#c9c2b3"/>
+  <rect x="48" y="74" width="40" height="5" rx="2.5" fill="#c9c2b3"/>
+  <rect x="48" y="86" width="26" height="5" rx="2.5" fill="#c9c2b3"/>
 
   <!-- check badge -->
-  <circle cx="86" cy="93" r="17" fill="#6fa167"/>
-  <path d="M77 93 L83.5 99.5 L96 85" stroke="#f4efe6" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="86" cy="103" r="17" fill="#6fa167"/>
+  <path d="M77 103 L83.5 109.5 L96 95" stroke="#f4efe6" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
