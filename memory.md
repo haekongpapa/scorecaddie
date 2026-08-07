@@ -2993,3 +2993,30 @@ Vercel 환경변수에도 `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` 추가 필요(
 ### 다음 세션 시작 시
 
 - 특별한 후속 요청 없으면 로고 작업 단위(136~138번) 종료.
+
+
+## 139. 파비콘 적용 (2026-08-07)
+
+재홍님이 "이 로고 이미지를 파비콘으로 작성해서 웹페이지에 표시" 요청 — 직전(138번)에
+GOLF 라벨을 추가한 스코어카드 로고(`doc/logo/scorecard-logo.svg`)를 소스로 사용.
+
+- 이 프로젝트는 이제까지 파비콘이 전혀 없었음(`app/public`·`src/app`에 favicon/icon 파일
+  없음, `layout.tsx`의 `metadata`에도 `icons` 필드 없음 — 브라우저 기본 아이콘으로 뜨던
+  상태였을 것).
+- SVG 원본에서 cairosvg로 16/32/48/180/512px 각각 별도 래스터화(140px PNG를 확대하지
+  않고 벡터에서 다시 그려 각 크기에서 선명함 확보) → 16/32/48px를 묶어
+  `favicon.ico`(멀티 레졸루션 ICO) 생성, 512px는 `icon.png`, 180px는 애플 홈스크린용
+  `apple-icon.png`로 사용.
+- **Next.js 15 App Router 파일 기반 규칙**을 그대로 활용 — `src/app/favicon.ico`,
+  `src/app/icon.png`, `src/app/apple-icon.png`에 넣기만 하면 Next.js가 알아서
+  `<link rel="icon">` 등 메타 태그를 생성해줌. `layout.tsx`의 `metadata` 코드 수정 불필요.
+- 32px 이하 크기에서는 "GOLF" 글자가 흐릿해지지만(favicon 특성상 정상), 카드+깃발 실루엣
+  자체는 작은 크기에서도 구분됨.
+- 검증: `npx tsc --noEmit` 클린(정적 에셋이라 원래 영향 없음). **실제 브라우저 탭에 아이콘이
+  뜨는지는 재홍님 로컬 `npm run dev`에서 육안 확인 필요**(파비콘은 브라우저 캐싱이 강해서
+  하드 리프레시/시크릿 창으로 확인 권장).
+
+### 다음 세션 시작 시
+
+- 재홍님이 로컬에서 파비콘이 정상적으로 보이는지 확인 결과 알려주면 로고 작업 단위
+  (136~139번) 완전히 종료.

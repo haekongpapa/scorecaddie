@@ -16,6 +16,9 @@ app/
   src/auth.ts / auth.config.ts   NextAuth 설정 (이메일/비밀번호 + 구글/네이버 소셜 로그인)
   src/middleware.ts          보호 라우트 + role=ADMIN 접근 제어
   src/app/                  페이지(랜딩~마이페이지, 관리자 4개) + api/ 라우트
+  src/app/favicon.ico, icon.png, apple-icon.png   파비콘(Next.js App Router 파일 규칙,
+                             자동 인식 — layout.tsx 수정 불필요). 원본 SVG는
+                             doc/logo/scorecard-logo.svg (2026-08-07)
   e2e/                       Playwright e2e 테스트 (8개 시나리오)
   e2e/mocks/                 외부 API(공공데이터/카카오) 로컬 목 서버 — e2e 전용
 ```
