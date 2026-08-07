@@ -14,9 +14,10 @@
   3. 하이원CC 홀별 Par 자료 미확보(부차 데이터 이슈) — 사용자가 공식 스코어카드 확보 시 재요청 예정.
   4. **좌표 지오코딩(79~82번)은 REST API 키 발급·403 해결까지 실사용 검증 완료.** 82번(2026-07-22)에서 `GolfCourse.addressLotno`(지번 주소 원본) 컬럼을 추가해 도로명→지번→키워드(골프장명) 3단계 폴백으로 개편함 — **사용자 로컬에서 `prisma migrate deploy`+`generate` → 11번(골프장 Par 관리) "골프장 공공 데이터 업로드" 재실행(기존 652개 골프장 `addressLotno` 백필) → "좌표 지오코딩 실행" 재실행, 이 순서로 후속 조치 필요**(82번 항목 참고).
   5. **환경 팁(82번, 2026-07-22)**: 샌드박스에서 `prisma generate`가 `EPERM: unlink ...client/index-browser.js`로 실패하면, `mv node_modules/.prisma/client node_modules/.prisma/client_old_<ts>`로 기존 디렉터리를 비켜준 뒤 재실행하면 됨(삭제는 막혀있어도 이동은 허용되는 FUSE 마운트 특성 활용) — 이제 스키마 변경 후에도 샌드박스에서 `tsc` 타입 검증까지 가능.
+  6. **네이버 OAuth 로그인 신규 추가(134번, 2026-08-07)** — 코드/버튼/문서 반영은 끝났으나 `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET`이 `.env`에 빈 값. 재홍님이 네이버 개발자센터에서 애플리케이션 등록 후 값 입력 + 로컬 실제 로그인 확인 필요(134번 항목 참고).
 - **기상청 날씨 API는 77/78번에서 실사용 검증까지 완료**(2026-07-22, `WEATHER_API_KEY` 정상 동작 확인됨) — 더 이상 대기 항목 아님.
 - **로컬 DB 접근 불가 환경 제약** (재홍님과 논의 완료, 2026-07-22): 이 샌드박스는 재홍님 PC와 분리된 격리 환경이라 `localhost:5432`(Docker든 네이티브 설치든 무관)에 도달 불가, 아웃바운드도 극히 제한적 allowlist(github.com 외 대부분 차단 확인)라 클라우드 DB로 옮겨도 당장은 안 됨 — 실제 DB 동작 검증은 계속 재홍님이 로컬에서 진행하는 방식 유지하기로 확정.
-- **작업 시 필수 규칙**: 이 프로젝트 폴더(`ScoreCaddie`)에 대한 파일 쓰기는 `Edit`/`Write` 툴이 아니라 항상 `mcp__workspace__bash`의 heredoc(`cat > file << 'EOF' ... EOF`)으로 하고, 직후 `wc -c`/`tail`/`grep -cP '\x00'`로 검증할 것(파일이 조용히 잘리거나 변경이 아예 반영 안 되는 마운트 버그가 반복 확인됨 — 8~12번 항목 참고). memory.md·doc/*.md처럼 이미 존재하는 큰 파일을 부분 수정할 때는 python3(`open().read()`→문자열 치환→`open().write()`)로 특정 블록만 교체하는 방식이 안전하고 효율적(전체를 다시 타이핑할 필요 없음, 순수 파일 I/O라 Edit/Write 툴의 truncation 버그와도 무관) — 이번 세션에 확립한 방식.
+- **작업 시 필수 규칙**: 이 프로젝트 폴더(`ScoreCaddie`)에 대한 파일 쓰기는 `Edit`/`Write` 툴이 아니라 항상 `mcp__workspace__bash`의 heredoc(`cat > file << 'EOF' ... EOF`)으로 하고, 직후 `wc -c`/`tail`/`grep -cP '\x00'`로 검증할 것(파일이 조용히 잘리거나 변경이 아예 반영 안 되는 마운트 버그가 반복 확인됨 — 8~12번 항목 참고). memory.md·doc/*.md처럼 이미 존재하는 큰 파일을 부분 수정할 때는 python3(`open().read()`→문자열 치환→`open().write()`)로 특정 블록만 교체하는 방식이 안전하고 효율적(전체를 다시 타이핑할 필요 없음, 순수 파일 I/O라 Edit/Write 툴의 truncation 버그와도 무관) — 이번 세션에 확립한 방식. **2026-08-07 추가 확인(134번)**: 이번 세션 환경(Cowork)에서는 `Edit` 툴로 직접 수정한 뒤 `mcp__workspace__bash`의 `grep`/`cat`으로 재확인해본 결과 truncation 없이 정상 반영됨 — 다만 이 규칙 자체는 과거 다른 샌드박스 환경에서 재현된 문제라 완전히 폐기하지 말고, 이상 징후(파일 크기가 예상과 다름 등) 보이면 여전히 heredoc+검증 방식으로 전환할 것.
 - **사용자 커뮤니케이션 선호(2026-07-22, 화면명은 2026-07-30 갱신)**: 화면 번호를 언급할 때는 항상 화면 명칭을 함께 표기할 것(예: "11번" X → "11번(골프장 관리)" O, 구 명칭 "골프장 Par 관리"는 124번 항목에서 개명). 대화뿐 아니라 memory.md/개발리스트.md 등 문서에도 가능하면 이 표기를 유지.
 - **TypeScript 판별 유니언 주의(80번, 2026-07-22)**: `tsconfig.json`이 `strict: false`라 `{ok:true}|{ok:false}` 같은 boolean 판별자 유니언은 `if/else`에서 제대로 안 좁혀짐(narrowing 실패, `tsc` 에러). 성공/실패를 나타내는 타입은 항상 `{lat,lng} | {reason}`처럼 필드 유무로 판별(`"필드명" in 값`)하게 설계할 것 — `lib/weather/kma.ts`(`FetchResult`), `lib/geocoding/kakao.ts`(`GeocodeResult`)가 이 스타일 예시.
 - **코드 작성 시(2026-07-27)**: 디렉터리 구조·코딩 스타일은 `doc/coding-guidelines.md`를 참고할 것(89번 항목 참고) — Express 계층형이 아니라 Next.js App Router/Prisma 관례에 맞춘 프로젝트 전용 가이드.
@@ -2805,3 +2806,58 @@ AskUserQuestion으로 확인 → **1)은 이 화면에만 로컬 오버레이 �
 
 - 특별히 대기 중인 후속 과제 없음. 15번(기록 분석) + 화면전환 로딩 관련 작업 사이클
   전체(125~133번) 완전히 종료.
+
+
+## 134. 네이버 소셜로그인 추가 (2026-08-07)
+
+재홍님이 "기능추가 - 소셜로그인 네이버 추가" 요청. 기존 구글 OAuth 구조를 그대로 참고해
+확장.
+
+- **설계**: next-auth(Auth.js v5, `5.0.0-beta.25`)에 `naver` provider가 내장돼 있음
+  (`next-auth/providers/naver` → `@auth/core/providers/naver` re-export, OAuth2 표준,
+  `profile()`이 `response.id/nickname/email/profile_image`를 우리 User 필드로 매핑까지
+  기본 제공). `Account` 테이블은 `provider` 컬럼이 문자열이라 스키마 변경 없이 provider
+  등록만으로 확장 가능 — 46번 항목(카카오 어댑터 연결)과 동일한 패턴.
+- **구현**:
+  - `app/src/auth.config.ts`: `Naver` provider import + `providers` 배열에 추가
+    (`clientId: env.naverClientId, clientSecret: env.naverClientSecret`), Google과 동일한
+    위치(Edge-safe 설정 파일)에 둠.
+  - `app/src/lib/config/env.ts`: `naverClientId`/`naverClientSecret` 재노출 추가.
+  - `app/.env`: `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` 빈 값 플레이스홀더 + 콜백 URL
+    안내 주석 추가(`/api/auth/callback/naver`).
+  - `app/src/app/login/page.tsx`: 구글 버튼 아래 네이버 버튼 추가, `signIn("naver",
+    {callbackUrl:"/dashboard"})`. 네이버 브랜드 컬러(#03C75A) 배경 버튼으로 구글 버튼
+    (테두리만)과 시각적으로 구분. 버튼 텍스트를 "네이버로 계속하기"로 지어 e2e
+    `login.spec.ts`의 `getByRole("button",{name:"로그인"})` substring 매칭과 충돌하지
+    않도록 기존 구글 버튼("구글로 계속하기") 네이밍 컨벤션을 그대로 따름.
+  - `doc/pages.md`(2번 로그인 화면), `doc/개발리스트.md`(0번 기반 작업 표 + 2번 로그인
+    화면 표, 카카오 관련 stale 표기 "✅ 카카오도 동일"도 이번에 발견해 함께 정리),
+    루트 `README.md`, `app/README.md` 4개 문서 모두 반영.
+- **검증**: `npx tsc --noEmit` 클린(0 에러). `npx vitest run`은 이 세션 시작 시점부터
+  샌드박스에 `@rolldown/binding-linux-x64-gnu` 네이티브 바이너리가 없어 구동 자체가
+  안 되는 상태(이번 변경과 무관한 기존 환경 제약, npm 레지스트리 접근 제한과 같은 계열
+  문제로 추정) — 로그인 관련 유닛/e2e 테스트는 이번 변경으로 새로 깨진 게 없는지 tsc
+  통과로만 간접 확인, **재홍님 로컬에서 `npm test`/`npm run test:e2e` 재실행 권장**.
+  e2e `login.spec.ts`는 OAuth 버튼 자체를 클릭하는 시나리오가 없어(카카오/구글 때도
+  마찬가지) 이번 변경으로 깨질 코드 경로 자체가 없음.
+- **미해결(사용자 로컬 조치 필요)**:
+  1. `credentials.local.txt`에 네이버 개발자센터 계정(`wodhddnl`)은 이미 있으나 아직
+     "애플리케이션" 등록 및 Client ID/Secret 발급 전 상태. developers.naver.com에서
+     애플리케이션 생성 → 서비스 URL/콜백 URL(`http://localhost:3000/api/auth/callback/naver`,
+     배포 시 배포 도메인도 추가) 등록 → 발급받은 Client ID/Secret을 `app/.env`의
+     `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET`에 입력.
+  2. 카카오 때(46번 항목)와 동일한 주의사항: 네이버 개발자센터에서 "이메일" 제공 항목이
+     "필수 동의"로 설정돼 있는지 확인 필요 — `User.email`이 필수+unique라 이메일이
+     안 넘어오면 `PrismaAdapter`의 `createUser`가 실패할 수 있음.
+  3. 이메일/비밀번호로 이미 가입한 계정과 같은 이메일로 네이버 로그인을 시도하면
+     `OAuthAccountNotLinked` 에러 가능성(구글도 동일한 기존 한계, 46번 항목 참고 — 계정
+     연결 커스텀 로직은 여전히 미구현).
+  4. Client ID/Secret 입력 후 로컬에서 "네이버로 계속하기" 버튼으로 실제 로그인 성공
+     여부 확인 필요(구글은 47번 항목에서 이미 실사용 검증 완료).
+
+### 다음 세션 시작 시
+
+- 재홍님이 네이버 개발자센터 애플리케이션 등록 + `.env` 값 입력 + 로컬 로그인 테스트
+  결과를 알려주면, 성공 시 `doc/개발리스트.md`의 🟡 두 항목(네이버 OAuth 로그인, 네이버
+  소셜 로그인 버튼)을 ✅로 갱신하고 이 작업 단위 종료. 실패 시 에러 메시지 기준으로
+  후속 진단(46/47번 항목의 구글/카카오 트러블슈팅 이력 참고).

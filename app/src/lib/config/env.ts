@@ -10,6 +10,8 @@ export const env = {
   databaseUrl: process.env.DATABASE_URL,
   googleClientId: process.env.GOOGLE_CLIENT_ID,
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  naverClientId: process.env.NAVER_CLIENT_ID,
+  naverClientSecret: process.env.NAVER_CLIENT_SECRET,
   kakaoRestApiKey: process.env.KAKAO_REST_API_KEY,
   weatherApiKey: process.env.WEATHER_API_KEY,
   publicDataApiKey: process.env.PUBLIC_DATA_API_KEY,

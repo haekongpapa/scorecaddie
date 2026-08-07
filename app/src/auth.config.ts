@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
+import Naver from "next-auth/providers/naver";
 import { env } from "@/lib/config/env";
 
 // Edge 런타임(미들웨어)에서도 안전하게 쓸 수 있는 최소 설정.
@@ -12,6 +13,10 @@ export default {
     Google({
       clientId: env.googleClientId,
       clientSecret: env.googleClientSecret,
+    }),
+    Naver({
+      clientId: env.naverClientId,
+      clientSecret: env.naverClientSecret,
     }),
   ],
   pages: {

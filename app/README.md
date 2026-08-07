@@ -13,7 +13,7 @@ app/
   prisma.config.ts          Prisma 7 CLI 설정 (migrate 등 CLI용 DATABASE_URL)
   src/lib/prisma.ts         런타임 PrismaClient (@prisma/adapter-pg)
   src/lib/config/env.ts     환경변수 접근 창구 (다른 파일은 process.env 직접 참조 안 함)
-  src/auth.ts / auth.config.ts   NextAuth 설정 (이메일/비밀번호 + 구글 소셜 로그인)
+  src/auth.ts / auth.config.ts   NextAuth 설정 (이메일/비밀번호 + 구글/네이버 소셜 로그인)
   src/middleware.ts          보호 라우트 + role=ADMIN 접근 제어
   src/app/                  페이지(랜딩~마이페이지, 관리자 4개) + api/ 라우트
   e2e/                       Playwright e2e 테스트 (8개 시나리오)
@@ -64,7 +64,7 @@ npm run test:e2e
 
 ## 핵심 참고사항
 - **관리자 계정**: 최초 관리자는 가입 폼으로 만들 수 없습니다(기본 `role=USER`). Supabase에서 해당 계정의 `role`을 `ADMIN`으로 직접 변경해야 합니다.
-- **소셜 로그인**: 구글만 지원합니다. 카카오 OAuth 로그인은 2026-07-22 사용자 요청으로 삭제됐습니다(`KAKAO_REST_API_KEY`는 로그인용이 아니라 골프장 좌표 지오코딩의 주소 검색용 별개 키입니다).
+- **소셜 로그인**: 구글 + 네이버(2026-08-07 추가)를 지원합니다. 카카오 OAuth 로그인은 2026-07-22 사용자 요청으로 삭제됐습니다(`KAKAO_REST_API_KEY`는 로그인용이 아니라 골프장 좌표 지오코딩의 주소 검색용 별개 키입니다). 네이버는 `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET`를 네이버 개발자센터에서 발급받아 `.env`에 입력해야 실제 로그인이 동작합니다(콜백 URL: `/api/auth/callback/naver`).
 - **골프장 데이터**: 공공데이터포털 실시간 API로 동기화합니다(`doc/admin-golfcourse-sync.md` 참고). 좌표는 TM 중부원점(EPSG:5174) → WGS84 변환 후, 실패 시 카카오 주소 검색으로 폴백합니다.
 - **골프장 루프/Par**: `GolfCourseLoop`(9홀 단위 구간, 전반/후반 등) → `GolfCourseHole`(루프별 규정타수). `HoleScore.par`는 라운드 등록 시점의 스냅샷이라 이후 Par가 바뀌어도 과거 기록은 그대로 유지됩니다.
 
