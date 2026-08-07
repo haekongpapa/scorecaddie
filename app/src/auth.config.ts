@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import Naver from "next-auth/providers/naver";
+import Kakao from "next-auth/providers/kakao";
 import { env } from "@/lib/config/env";
 
 // Edge 런타임(미들웨어)에서도 안전하게 쓸 수 있는 최소 설정.
@@ -38,6 +39,15 @@ export default {
           image: profile.response.profile_image,
         };
       },
+    }),
+    // 2026-08-07 재추가 — 86번 항목(2026-07-22)에서 사용자 요청으로 한 번 삭제했다가
+    // 다시 요청받아 부활. 카카오는 네이버와 달리 API가 "실명" 필드 자체를 제공하지 않고
+    // 닉네임만 제공하므로(카카오 정책), 기본 profile()이 이미 kakao_account.profile.nickname을
+    // 쓰는 게 최선 — 네이버 때와 달리 profile() 재정의 불필요.
+    Kakao({
+      clientId: env.kakaoClientId,
+      clientSecret: env.kakaoClientSecret,
+      allowDangerousEmailAccountLinking: true,
     }),
   ],
   pages: {

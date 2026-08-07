@@ -16,7 +16,8 @@
   5. **환경 팁(82번, 2026-07-22)**: 샌드박스에서 `prisma generate`가 `EPERM: unlink ...client/index-browser.js`로 실패하면, `mv node_modules/.prisma/client node_modules/.prisma/client_old_<ts>`로 기존 디렉터리를 비켜준 뒤 재실행하면 됨(삭제는 막혀있어도 이동은 허용되는 FUSE 마운트 특성 활용) — 이제 스키마 변경 후에도 샌드박스에서 `tsc` 타입 검증까지 가능.
   6. **네이버 OAuth 로그인(134~135번, 2026-08-07)** — provider 등록·키 입력까지 끝났고, 로컬 실사용 중 나온 버그 2건(계정 자동 연결 미허용, 이름 미저장)도 135번에서 수정 완료. **재홍님이 수정 후 재로그인으로 최종 확인만 하면 종료**(기존에 생성된 `name=null` 테스트 계정 행은 소급 반영 안 되니 Supabase에서 직접 정리 또는 재가입 권장).
   7. **로고/파비콘(136~140번, 2026-08-07)** — `doc/logo/`에 3종 제작, 파비콘 적용, Grammarly hydration 경고 수정까지 전부 재홍님 로컬 확인 완료. 더 이상 대기 항목 아님.
-  8. **회원 탈퇴 기능(141번, 2026-08-07 신규)** — `/profile/delete-account` + `DELETE /api/me` 구현 완료, `npx tsc --noEmit` 클린. **재홍님이 이메일/비밀번호 계정·소셜 계정 둘 다 로컬에서 실제 탈퇴 테스트 필요**(정상 삭제 + 로그아웃 확인).
+  8. **회원 탈퇴 기능(141번, 2026-08-07)** — 로컬 탈퇴 테스트 완료 확인됨. 더 이상 대기 항목 아님.
+  9. **카카오 소셜 로그인 재추가(142번, 2026-08-07 신규)** — 86번에서 삭제했던 걸 다시 요청받아 재추가. 코드/문서 반영 완료, `npx tsc --noEmit` 클린. **재홍님이 카카오 개발자센터 앱 등록(Redirect URI, 닉네임/이메일 동의항목) + `.env`(`KAKAO_CLIENT_ID`/`SECRET`) 입력 + 로컬 로그인 테스트 필요**.
 - **기상청 날씨 API는 77/78번에서 실사용 검증까지 완료**(2026-07-22, `WEATHER_API_KEY` 정상 동작 확인됨) — 더 이상 대기 항목 아님.
 - **로컬 DB 접근 불가 환경 제약** (재홍님과 논의 완료, 2026-07-22): 이 샌드박스는 재홍님 PC와 분리된 격리 환경이라 `localhost:5432`(Docker든 네이티브 설치든 무관)에 도달 불가, 아웃바운드도 극히 제한적 allowlist(github.com 외 대부분 차단 확인)라 클라우드 DB로 옮겨도 당장은 안 됨 — 실제 DB 동작 검증은 계속 재홍님이 로컬에서 진행하는 방식 유지하기로 확정.
 - **작업 시 필수 규칙**: 이 프로젝트 폴더(`ScoreCaddie`)에 대한 파일 쓰기는 `Edit`/`Write` 툴이 아니라 항상 `mcp__workspace__bash`의 heredoc(`cat > file << 'EOF' ... EOF`)으로 하고, 직후 `wc -c`/`tail`/`grep -cP '\x00'`로 검증할 것(파일이 조용히 잘리거나 변경이 아예 반영 안 되는 마운트 버그가 반복 확인됨 — 8~12번 항목 참고). memory.md·doc/*.md처럼 이미 존재하는 큰 파일을 부분 수정할 때는 python3(`open().read()`→문자열 치환→`open().write()`)로 특정 블록만 교체하는 방식이 안전하고 효율적(전체를 다시 타이핑할 필요 없음, 순수 파일 I/O라 Edit/Write 툴의 truncation 버그와도 무관) — 이번 세션에 확립한 방식. **2026-08-07 추가 확인(134번)**: 이번 세션 환경(Cowork)에서는 `Edit` 툴로 직접 수정한 뒤 `mcp__workspace__bash`의 `grep`/`cat`으로 재확인해본 결과 truncation 없이 정상 반영됨 — 다만 이 규칙 자체는 과거 다른 샌드박스 환경에서 재현된 문제라 완전히 폐기하지 말고, 이상 징후(파일 크기가 예상과 다름 등) 보이면 여전히 heredoc+검증 방식으로 전환할 것.
@@ -3109,3 +3110,51 @@ schema.prisma 추론이 아니라 **실제 적용된 마이그레이션 SQL**까
 ### 다음 세션 시작 시
 
 - 특별한 후속 요청 없으면 회원 탈퇴 작업 단위(141번) 완전히 종료.
+
+
+## 142. 카카오 소셜 로그인 재추가 (2026-08-07)
+
+재홍님이 "카카오 소셜 로그인 기능 추가. 필요한 사항 알려줘" 요청 — 86번 항목(2026-07-22)
+에서 사용자 요청으로 삭제했던 기능을 다시 요청받아 재추가. 134~135번(네이버 추가) 때 확립한
+패턴을 그대로 재사용.
+
+- **설계**: next-auth에 `kakao` provider가 내장돼 있음(`next-auth/providers/kakao`).
+  `KakaoProfile` 타입 확인 결과, 카카오는 네이버와 달리 API 자체에 "실명" 필드가 없고
+  `kakao_account.profile.nickname`(닉네임)만 제공 — 그래서 기본 `profile()`이 이미
+  nickname을 쓰는 게 최선이라 **네이버 때와 달리 `profile()` 재정의 불필요**(중요한 설계
+  차이점).
+- **구현**:
+  - `app/src/auth.config.ts`: `Kakao` provider import + 등록,
+    `allowDangerousEmailAccountLinking: true`(구글·네이버와 동일 정책, 135번에서 이미
+    프로젝트 전체 정책으로 확정된 것을 그대로 적용).
+  - `app/src/lib/config/env.ts`: `kakaoClientId`/`kakaoClientSecret` 추가 — 기존
+    `kakaoRestApiKey`(주소 검색용, 완전히 별개)와 이름이 헷갈리지 않도록 주석으로 명확히
+    구분.
+  - `app/.env`: `KAKAO_CLIENT_ID`/`KAKAO_CLIENT_SECRET` 빈 값 플레이스홀더 + 콜백 URL
+    안내 주석.
+  - `app/src/app/login/page.tsx`: 카카오 버튼 추가(`signIn("kakao", {callbackUrl:"/dashboard"})`),
+    카카오 브랜드 컬러(#FEE500 배경 + #391B1B 텍스트)로 구글(테두리만)·네이버(#03C75A)와
+    시각적으로 구분.
+  - `doc/pages.md`(2번 로그인 화면), `doc/개발리스트.md`(0번 표 + 2번 화면 표, 기존
+    "카카오 OAuth 로그인 삭제됨" 문구를 재추가 상태로 정정), 루트/앱 `README.md`,
+    `doc/vercel-deploy-guide.md`(env 변수 표 + 4-2번 프로덕션 Redirect URI 등록 섹션 신규
+    — 4-1번 네이버 섹션과 동일한 구조) 전부 반영.
+- **검증**: `npx tsc --noEmit` 클린. 실제 로그인은 재홍님 로컬에서 키 발급 후 확인 필요.
+
+### 재홍님이 준비해야 할 것 (안내한 내용)
+
+1. https://developers.kakao.com/console/app 에서 애플리케이션 생성(또는 기존 앱 재사용).
+2. "카카오 로그인" 활성화 → Redirect URI에 `http://localhost:3000/api/auth/callback/kakao`
+   등록(배포 시 프로덕션 도메인도 4-2번 참고해 추가 등록).
+3. **동의항목**에서 "닉네임"과 "카카오계정(이메일)" 활성화 — 특히 이메일은 46번 항목에서
+   이미 짚었듯 `User.email`이 필수+unique라 빠지면 가입 자체가 실패할 수 있음.
+4. 앱 요약정보의 **REST API 키**를 `KAKAO_CLIENT_ID`로, 카카오 로그인 > 보안 탭에서 발급하는
+   **Client Secret**을 `KAKAO_CLIENT_SECRET`으로 `app/.env`에 입력.
+5. `npm run dev` 재시작 후 "카카오로 계속하기" 버튼으로 로그인 테스트.
+- 이메일/비밀번호(또는 다른 소셜)로 이미 가입한 계정과 같은 이메일로 카카오 로그인을 하면
+  자동 연결됨(135번에서 켠 `allowDangerousEmailAccountLinking` 정책이 카카오에도 동일 적용).
+
+### 다음 세션 시작 시
+
+- 재홍님이 카카오 개발자센터 설정 + `.env` 입력 + 로컬 로그인 테스트 결과를 알려주면
+  `doc/개발리스트.md`의 🟡 항목들을 ✅로 갱신하고 종료.

@@ -12,6 +12,10 @@ export const env = {
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
   naverClientId: process.env.NAVER_CLIENT_ID,
   naverClientSecret: process.env.NAVER_CLIENT_SECRET,
+  // 카카오 "로그인" 앱 키(REST API 키를 Client ID로 사용) — 아래 kakaoRestApiKey(주소 검색용)와는
+  // 완전히 별개 용도. 2026-08-07 재추가(86번 항목에서 삭제됐다가 사용자 요청으로 부활).
+  kakaoClientId: process.env.KAKAO_CLIENT_ID,
+  kakaoClientSecret: process.env.KAKAO_CLIENT_SECRET,
   kakaoRestApiKey: process.env.KAKAO_REST_API_KEY,
   weatherApiKey: process.env.WEATHER_API_KEY,
   publicDataApiKey: process.env.PUBLIC_DATA_API_KEY,

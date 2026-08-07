@@ -96,6 +96,13 @@ export default function LoginPage() {
           >
             N  네이버로 계속하기
           </button>
+          <button
+            type="button"
+            onClick={() => signIn("kakao", { callbackUrl: "/dashboard" })}
+            className="rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-[#391B1B] bg-[#FEE500] hover:bg-[#f5dc00]"
+          >
+            K  카카오로 계속하기
+          </button>
         </div>
 
         <p className="mt-6 text-center text-sm text-gray-500">
