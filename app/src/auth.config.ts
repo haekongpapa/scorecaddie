@@ -8,15 +8,36 @@ import { env } from "@/lib/config/env";
 // bcryptjs/@prisma/adapter-pg는 Node.js 전용 모듈(crypto 등)을 사용하므로
 // Edge 런타임에 번들되면 "The edge runtime does not support Node.js 'crypto' module" 에러가 남.
 // 전체 설정(Credentials 포함)은 src/auth.ts에서 이 설정을 확장해서 만든다.
+//
+// allowDangerousEmailAccountLinking: true — 같은 이메일로 이미 가입된 계정(이메일/비밀번호
+// 또는 다른 소셜 provider)이 있어도 자동으로 계정을 연결한다. Auth.js 기본값은 이걸 막아서
+// "OAuthAccountNotLinked" 에러를 낸다(계정 탈취 방지 목적: provider가 이메일 소유를 검증
+// 안 했을 경우의 위험 때문). 구글/네이버 둘 다 자체적으로 이메일 인증을 거친 계정만 이메일을
+// 내려주므로 이 프로젝트(개인용 골프 스코어 앱) 규모에서는 위험도가 낮다고 판단해 켜기로
+// 결정(2026-08-07, memory.md 134번, 사용자 확인).
 export default {
   providers: [
     Google({
       clientId: env.googleClientId,
       clientSecret: env.googleClientSecret,
+      allowDangerousEmailAccountLinking: true,
     }),
     Naver({
       clientId: env.naverClientId,
       clientSecret: env.naverClientSecret,
+      allowDangerousEmailAccountLinking: true,
+      // next-auth 기본 profile()은 name을 response.nickname(별명)에서만 가져온다 —
+      // 네이버 개발자센터 앱의 "제공 정보 선택"에서 별명 항목을 동의하지 않은 계정은
+      // nickname이 안 내려와 User.name이 null로 저장되는 문제가 있었음(2026-08-07 확인).
+      // response.name(실명)을 우선하고 nickname을 폴백으로 사용하도록 재정의.
+      profile(profile) {
+        return {
+          id: profile.response.id,
+          name: profile.response.name ?? profile.response.nickname ?? null,
+          email: profile.response.email,
+          image: profile.response.profile_image,
+        };
+      },
     }),
   ],
   pages: {
